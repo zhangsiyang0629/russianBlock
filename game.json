@@ -1,0 +1,10 @@
+{
+  "deviceOrientation": "portrait",
+  "subpackages": [
+    {
+      "name": "animation",
+      "root": "subpackages/animation/",
+      "independent": false
+    }
+  ]
+}

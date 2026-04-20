@@ -1,0 +1,149 @@
+{
+  "frames":[
+    {
+      "filename": "frame_0013.png.spriteframe",
+      "rect": [
+        0,
+        0,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0014.png.spriteframe",
+      "rect": [
+        0,
+        576,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0015.png.spriteframe",
+      "rect": [
+        0,
+        1152,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0016.png.spriteframe",
+      "rect": [
+        432,
+        0,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0017.png.spriteframe",
+      "rect": [
+        864,
+        0,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0018.png.spriteframe",
+      "rect": [
+        1296,
+        0,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0019.png.spriteframe",
+      "rect": [
+        432,
+        576,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0020.png.spriteframe",
+      "rect": [
+        432,
+        1152,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0021.png.spriteframe",
+      "rect": [
+        864,
+        576,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0022.png.spriteframe",
+      "rect": [
+        864,
+        1152,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0023.png.spriteframe",
+      "rect": [
+        1296,
+        576,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }, 
+    {
+      "filename": "frame_0024.png.spriteframe",
+      "rect": [
+        1296,
+        1152,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }
+  ],
+  "meta": {
+    "app": "https://www.codeandweb.com/texturepacker",
+    "version":"1.0",
+    "smartupdate": "$TexturePacker:SmartUpdate:54e3c348a10834808124aab88ba2cfa5:86c3a6d338d9cacfca6d332ee835bd52:699e02bfe76c81176c1e2470d39de7d6$",
+    "image": "pengfu-1.png",
+    "format": "RGBA4444",
+    "size": {
+      "w": 1728,
+      "h": 1728
+    },
+    "scale": 0.6
+  }
+}
+  

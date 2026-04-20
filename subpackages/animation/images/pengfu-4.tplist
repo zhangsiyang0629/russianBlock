@@ -1,0 +1,28 @@
+{
+  "frames":[
+    {
+      "filename": "frame_0049.png.spriteframe",
+      "rect": [
+        0,
+        0,
+        432,
+        576
+      ],
+      "rotated": false,
+      "trimmed": false
+    }
+  ],
+  "meta": {
+    "app": "https://www.codeandweb.com/texturepacker",
+    "version":"1.0",
+    "smartupdate": "$TexturePacker:SmartUpdate:54e3c348a10834808124aab88ba2cfa5:86c3a6d338d9cacfca6d332ee835bd52:699e02bfe76c81176c1e2470d39de7d6$",
+    "image": "pengfu-4.png",
+    "format": "RGBA4444",
+    "size": {
+      "w": 432,
+      "h": 576
+    },
+    "scale": 0.6
+  }
+}
+  

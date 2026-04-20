@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>S K E T C H Y  T E T R I S</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;family=Be+Vietnam+Pro:wght@400;500;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+        }
+        .sketchy-border {
+            border-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 5C15 4 85 6 95 5C96 15 94 85 95 95C85 96 15 94 5 95C4 85 6 15 5 5Z' stroke='%23322f22' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 20 / 12px stretch;
+        }
+        .paper-texture {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+        }
+        .crayon-fill {
+            background-image: linear-gradient(135deg, rgba(255,255,255,0.2) 25%, transparent 25%), linear-gradient(225deg, rgba(255,255,255,0.2) 25%, transparent 25%), linear-gradient(45deg, rgba(255,255,255,0.2) 25%, transparent 25%), linear-gradient(315deg, rgba(255,255,255,0.2) 25%, transparent 25%);
+            background-position: 4px 0, 4px 0, 0 0, 0 0;
+            background-size: 8px 8px;
+            background-repeat: repeat;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-dim": "#8a313b",
+                        "primary-fixed-dim": "#ef7f87",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#004938",
+                        "secondary": "#296654",
+                        "on-primary-fixed": "#330008",
+                        "error-dim": "#b92902",
+                        "background": "#fdf6e3",
+                        "on-tertiary": "#fff0e8",
+                        "surface-container": "#efe8d2",
+                        "primary-fixed": "#ff8c94",
+                        "error": "#b02500",
+                        "on-surface-variant": "#5f5b4d",
+                        "on-tertiary-container": "#644630",
+                        "tertiary-dim": "#684933",
+                        "secondary-fixed": "#b1efd8",
+                        "on-primary-container": "#5e0f1c",
+                        "on-primary": "#ffefef",
+                        "surface": "#fdf6e3",
+                        "error-container": "#f95630",
+                        "secondary-container": "#b1efd8",
+                        "secondary-fixed-dim": "#a3e1ca",
+                        "on-error-container": "#520c00",
+                        "surface-tint": "#993d46",
+                        "surface-variant": "#e4ddc5",
+                        "inverse-surface": "#100e05",
+                        "on-primary-fixed-variant": "#6a1824",
+                        "tertiary-fixed": "#fdd1b4",
+                        "surface-dim": "#dcd4bb",
+                        "on-tertiary-fixed-variant": "#6f4f39",
+                        "on-surface": "#322f22",
+                        "surface-container-high": "#eae2cb",
+                        "tertiary-container": "#fdd1b4",
+                        "inverse-primary": "#ff8c94",
+                        "surface-container-low": "#f8f0dc",
+                        "tertiary-fixed-dim": "#eec4a7",
+                        "on-secondary-fixed-variant": "#296654",
+                        "surface-container-highest": "#e4ddc5",
+                        "outline-variant": "#b2ad9c",
+                        "on-tertiary-fixed": "#4f341f",
+                        "surface-bright": "#fdf6e3",
+                        "on-error": "#ffefec",
+                        "on-secondary-container": "#1d5c4a",
+                        "tertiary": "#75553e",
+                        "on-secondary": "#c5ffe9",
+                        "on-background": "#322f22",
+                        "primary": "#993d46",
+                        "secondary-dim": "#1b5948",
+                        "outline": "#7b7767",
+                        "inverse-on-surface": "#a29d8c",
+                        "primary-container": "#ff8c94"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Be Vietnam Pro"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body text-on-surface selection:bg-primary-container selection:text-on-primary-container overflow-hidden h-screen flex flex-col paper-texture">
+<!-- Top Navigation / Header (Based on Shared Components) -->
+<header class="flex justify-between items-center w-full px-6 py-4 h-[10%] bg-[#fdfbf7] dark:bg-[#1a1a18] border-b-4 border-[#322f22] shadow-[4px_4px_0px_0px_rgba(50,47,34,0.1)] z-50">
+<button class="material-symbols-outlined text-[#322f22] dark:text-[#fdfbf7] text-2xl hover:rotate-1 hover:scale-105 active:translate-y-1 transition-transform" data-icon="menu">menu</button>
+<h1 class="font-['Plus_Jakarta_Sans'] font-bold tracking-tighter uppercase text-lg text-[#322f22] dark:text-[#fdfbf7]">S K E T C H Y  T E T R I S</h1>
+<button class="material-symbols-outlined text-[#322f22] dark:text-[#fdfbf7] text-2xl hover:rotate-1 hover:scale-105 active:translate-y-1 transition-transform" data-icon="settings">settings</button>
+</header>
+<main class="flex-grow flex flex-col w-full max-w-md mx-auto relative px-4 pt-2">
+<!-- Ad Slot Area -->
+<section class="h-[10%] w-full flex items-center justify-center mb-4">
+<div class="w-full h-full border-4 border-dashed border-outline-variant rounded-xl flex items-center justify-center bg-surface-container-low/50 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+<span class="font-label text-on-surface-variant font-bold tracking-widest uppercase text-xs">Advertisement Slot</span>
+</div>
+</section>
+<!-- Main Game Canvas Area -->
+<section class="flex-grow flex flex-col justify-center items-center relative gap-4">
+<!-- Game Stats Floating -->
+<div class="absolute -left-2 top-10 flex flex-col gap-3 z-10">
+<div class="bg-surface-container-high border-2 border-on-background p-3 -rotate-2 shadow-[4px_4px_0px_0px_#322f22]">
+<span class="block text-[10px] font-label font-black text-on-surface-variant leading-none">SCORE</span>
+<span class="block text-2xl font-headline font-extrabold text-primary">12,450</span>
+</div>
+<div class="bg-surface-container-high border-2 border-on-background p-3 rotate-1 shadow-[4px_4px_0px_0px_#322f22]">
+<span class="block text-[10px] font-label font-black text-on-surface-variant leading-none">LINES</span>
+<span class="block text-2xl font-headline font-extrabold text-secondary">42</span>
+</div>
+</div>
+<!-- Next Piece Preview -->
+<div class="absolute -right-2 top-10 z-10">
+<div class="bg-surface-container-high border-2 border-on-background p-3 rotate-2 shadow-[4px_4px_0px_0px_#322f22] min-w-[80px]">
+<span class="block text-[10px] font-label font-black text-on-surface-variant text-center mb-2">NEXT</span>
+<div class="grid grid-cols-3 gap-0.5 w-12 h-8 mx-auto">
+<div class="bg-tertiary-container border-[3px] border-on-background crayon-fill"></div>
+<div class="bg-tertiary-container border-[3px] border-on-background crayon-fill"></div>
+<div class="bg-tertiary-container border-[3px] border-on-background crayon-fill"></div>
+<div class="col-start-2 bg-tertiary-container border-[3px] border-on-background crayon-fill"></div>
+</div>
+</div>
+</div>
+<!-- Game Grid Container -->
+<div class="relative w-full aspect-[10/18] max-h-[530px] bg-surface-container-lowest border-[6px] border-on-background rounded-sm shadow-[8px_8px_0px_0px_rgba(50,47,34,0.08)] flex items-center justify-center p-1">
+<!-- Grid Lines (Faded) -->
+<div class="absolute inset-0 grid grid-cols-10 grid-rows-20 pointer-events-none opacity-20">
+<!-- Generating a sample 10x20 grid visually via borders -->
+<div class="col-span-full row-span-full border border-outline/30 flex flex-wrap">
+<div class="w-full h-full grid grid-cols-10 grid-rows-[repeat(20,minmax(0,1fr))]">
+<!-- Loop simulation for grid cells -->
+<div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div>
+<div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div>
+<div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div><div class="border-[0.5px] border-outline/30"></div>
+<!-- ... clipped for brevity ... -->
+</div>
+</div>
+</div>
+<!-- Falling Block -->
+<div class="absolute top-[20%] left-[40%] grid grid-cols-2 grid-rows-2 w-[20%] aspect-square -rotate-1">
+<div class="bg-primary border-4 border-on-background crayon-fill translate-x-[2px] translate-y-[-1px]"></div>
+<div class="bg-primary border-4 border-on-background crayon-fill translate-x-[-1px] translate-y-[2px]"></div>
+<div class="bg-primary border-4 border-on-background crayon-fill translate-x-[3px] translate-y-[1px]"></div>
+<div class="bg-primary border-4 border-on-background crayon-fill translate-x-[-2px] translate-y-[-3px]"></div>
+</div>
+<!-- Stacked Blocks at Bottom -->
+<div class="absolute bottom-0 w-full p-1 flex flex-col justify-end">
+<!-- Row 1 (Bottom) -->
+<div class="flex">
+<div class="w-[10%] aspect-square bg-secondary border-[3px] border-on-background rotate-1"></div>
+<div class="w-[10%] aspect-square bg-secondary border-[3px] border-on-background -rotate-2"></div>
+<div class="w-[10%] aspect-square bg-secondary border-[3px] border-on-background rotate-1"></div>
+<div class="w-[10%] aspect-square bg-secondary border-[3px] border-on-background -rotate-1"></div>
+<div class="w-[10%] aspect-square opacity-0"></div>
+<div class="w-[10%] aspect-square opacity-0"></div>
+<div class="w-[10%] aspect-square bg-primary-fixed border-[3px] border-on-background rotate-2"></div>
+<div class="w-[10%] aspect-square bg-primary-fixed border-[3px] border-on-background -rotate-1"></div>
+<div class="w-[10%] aspect-square bg-primary-fixed border-[3px] border-on-background rotate-1"></div>
+<div class="w-[10%] aspect-square bg-primary-fixed border-[3px] border-on-background"></div>
+</div>
+<!-- Row 2 -->
+<div class="flex">
+<div class="w-[10%] aspect-square opacity-0"></div>
+<div class="w-[10%] aspect-square opacity-0"></div>
+<div class="w-[10%] aspect-square bg-tertiary border-[3px] border-on-background -rotate-2"></div>
+<div class="w-[10%] aspect-square bg-tertiary border-[3px] border-on-background rotate-1"></div>
+<div class="w-[10%] aspect-square bg-tertiary border-[3px] border-on-background -rotate-1"></div>
+<div class="w-[10%] aspect-square bg-tertiary border-[3px] border-on-background"></div>
+<div class="w-[10%] aspect-square opacity-0"></div>
+<div class="w-[10%] aspect-square bg-secondary-fixed border-[3px] border-on-background -rotate-1"></div>
+<div class="w-[10%] aspect-square bg-secondary-fixed border-[3px] border-on-background rotate-2"></div>
+<div class="w-[10%] aspect-square opacity-0"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Controls Area (Based on Shared Components) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-12 bg-[#fdfbf7] dark:bg-[#1a1a18] border-t-4 border-[#322f22] shadow-[0_-4px_0px_0px_rgba(50,47,34,0.05)] h-[18%]">
+<!-- Left Move -->
+<button class="flex flex-col items-center justify-center w-16 h-16 rounded-full border-4 border-on-background bg-secondary-container text-on-secondary-container hover:rotate-[-3deg] hover:bg-orange-50 active:scale-90 active:rotate-3 transition-all duration-150 shadow-[4px_4px_0px_0px_#322f22]">
+<span class="material-symbols-outlined text-3xl font-black" data-icon="arrow_back">arrow_back</span>
+</button>
+<!-- Speed Down -->
+<button class="flex flex-col items-center justify-center w-16 h-16 rounded-full border-4 border-on-background bg-secondary-container text-on-secondary-container hover:rotate-[-3deg] hover:bg-orange-50 active:scale-90 active:rotate-3 transition-all duration-150 shadow-[4px_4px_0px_0px_#322f22]">
+<span class="material-symbols-outlined text-3xl font-black" data-icon="arrow_downward">arrow_downward</span>
+</button>
+<!-- Transform (Active Style Applied based on intent) -->
+<button class="flex flex-col items-center justify-center w-20 h-20 rounded-full border-4 border-[#322f22] bg-[#FFB347] text-white scale-110 shadow-[6px_6px_0px_0px_#322f22] hover:rotate-[-3deg] active:scale-90 active:rotate-3 transition-all duration-150">
+<span class="material-symbols-outlined text-4xl font-black" data-icon="rotate_right">rotate_right</span>
+</button>
+<!-- Right Move -->
+<button class="flex flex-col items-center justify-center w-16 h-16 rounded-full border-4 border-on-background bg-secondary-container text-on-secondary-container hover:rotate-[-3deg] hover:bg-orange-50 active:scale-90 active:rotate-3 transition-all duration-150 shadow-[4px_4px_0px_0px_#322f22]">
+<span class="material-symbols-outlined text-3xl font-black" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</nav>
+</main>
+<!-- Aesthetic Decorative Elements -->
+<div class="fixed top-20 right-4 opacity-10 pointer-events-none select-none -z-10">
+<img alt="pencil sketch icon" class="w-20 h-20 rotate-12" data-alt="a simple graphite pencil sketch of a light bulb with sketchy radiating lines on paper background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1Nt7rcbLCw-CG41y3f4n98JmwUJPBJBz5-3bvBFl-Q2ZvPdMMBCEIR-f5g7obnQmsWZN5ZO_PY65-hoaUSsZoBXakvHCTWlwQ4iro9qWXTiAr3pEZ7XOls9nNtb62iyiACzR1oBNhZm2oLjc2aneEkXAGVjSK8tzfS4Qu5tcvc3b4zI7X6Cjeu2bQOLKkP6H1yetaukVT-OLYUvSybsHt3ZzWMKZCcL2iPSGzpI7nFqLGFp7bhKgTGxC4hRmQCupcNV-Z4CPl5Z_p"/>
+</div>
+<div class="fixed bottom-40 left-4 opacity-10 pointer-events-none select-none -z-10">
+<img alt="sketchbook icon" class="w-16 h-16 -rotate-12" data-alt="a hand-drawn notebook illustration with rough lines and paper texture look" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL3zZGHSxHUAOlg6zU-5b608KoOFiJtNrvsqLtgkOS27adt3ywAdKm6k90ZQB4UGhO-Kg33ZXl7Y8RZKcdbK0cZx3Q0_SMUi_7b4bK1YSt96Hq1orXzFWEiKJyXpgLcrQ45F5t6zP_8geExhvTW89kjq-Fp6VonOtkefjyOygdfiuPYG67MtStnqUFcWx7vFtxbdkhhkZakJ564_yo1FlSmVUxfT87vHBKUKnrkSol-mbq2a-CGMQoXV1OMl6yDA_61iucZNTa_R4I"/>
+</div>
+</body></html>
