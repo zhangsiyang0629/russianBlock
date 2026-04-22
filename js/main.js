@@ -2,6 +2,7 @@ import './render'; // 初始化Canvas
 import TetrisGame from './tetris/game';
 import Cover from './cover';
 import EnergyManager from './tetris/energy';
+import { getOrCreatePlayerData, updateUserInfo } from './tetris/playerData';
 
 const isDebugMode = false
 
@@ -16,10 +17,20 @@ export default class Main {
     this.currentState = 'cover'; // 'cover' 或 'game'
     this.aniId = null;
     this.energyManager = new EnergyManager();
+    this.playerData = null;
+    this.savedLevel = 1;
+    this.savedHighScore = 0;
     
     // 隐私协议状态
     this.privacyResolve = null;
     this.privacyAgreed = false;
+    
+    // 微信用户信息绑定状态
+    let savedUserInfoBound = false;
+    try { savedUserInfoBound = !!wx.getStorageSync('userInfoBound'); } catch (e) {}
+    console.log('savedUserInfoBound', savedUserInfoBound)
+    this.userInfoBound = savedUserInfoBound;
+    this.userInfoButton = null; // wx.createUserInfoButton 实例
     
     // 等待Canvas准备就绪
     setTimeout(() => {
@@ -56,71 +67,151 @@ export default class Main {
   /**
    * 设置隐私授权回调
     */
-   setupPrivacyAuthorization() {
-     if (typeof wx === 'undefined' || !wx.onNeedPrivacyAuthorization) {
-       console.warn('wx.onNeedPrivacyAuthorization not available');
-       return;
-     }
-     
-      wx.onNeedPrivacyAuthorization((resolve, eventInfo) => {
-        console.log('=== wx.onNeedPrivacyAuthorization回调被触发 ===', eventInfo.referrer);
-        
-        // 存储resolve函数供后续使用
-        this.privacyResolve = resolve;
-        
-        // 使用微信原生Modal作为隐私弹窗
-        console.log('显示微信原生隐私弹窗');
-        wx.showModal({
-          title: '隐私协议确认',
-          content: '请确认您已详细阅读并同意用户服务协议和隐私保护政策',
-          confirmText: '同意',
-          cancelText: '拒绝',
-          success: (res) => {
-            console.log('微信Modal结果:', res);
-            if (res.confirm) {
-              console.log('用户同意隐私协议');
-              // 更新本地状态
-              this.privacyAgreed = true;
-              this.syncPrivacyStatusToCover();
-              // 上报同意事件
-              if (this.privacyResolve === resolve) {
-                console.log('上报隐私同意事件');
-                resolve({ event: 'agree' });
-                this.privacyResolve = null;
+    setupPrivacyAuthorization() {
+      if (typeof wx === 'undefined' || !wx.onNeedPrivacyAuthorization) {
+        console.warn('wx.onNeedPrivacyAuthorization not available');
+        return;
+      }
+      
+        wx.onNeedPrivacyAuthorization((resolve, eventInfo) => {
+          console.log('=== wx.onNeedPrivacyAuthorization回调被触发 ===', eventInfo.referrer);
+          
+          // 存储resolve函数供后续使用
+          this.privacyResolve = resolve;
+          
+          // 使用微信原生Modal作为隐私弹窗
+          console.log('显示微信原生隐私弹窗');
+          wx.showModal({
+            title: '隐私协议确认',
+            content: '请确认您已详细阅读并同意用户服务协议和隐私保护政策',
+            confirmText: '同意',
+            cancelText: '拒绝',
+            success: (res) => {
+              console.log('微信Modal结果:', res);
+              if (res.confirm) {
+                console.log('用户同意隐私协议');
+                // 更新本地状态
+                this.privacyAgreed = true;
+                this.syncPrivacyStatusToCover();
+                // 标记授权已完成（勾选框消失）
+                if (this.cover && this.cover.setAuthorizationCompleted) {
+                  this.cover.setAuthorizationCompleted(true);
+                }
+                // 保存到本地存储，下次启动直接隐藏勾选框
+                try { wx.setStorageSync('privacyAuthorized', true); } catch (e) {}
+                // 尝试绑定微信用户信息
+                this.tryBindUserInfo();
+                // 上报同意事件
+                if (this.privacyResolve === resolve) {
+                  console.log('上报隐私同意事件');
+                  resolve({ event: 'agree' });
+                  this.privacyResolve = null;
+                }
+              } else {
+                console.log('用户拒绝隐私协议');
+                // 更新本地状态（取消勾选）
+                this.privacyAgreed = false;
+                this.syncPrivacyStatusToCover();
+                // 上报拒绝事件
+                if (this.privacyResolve === resolve) {
+                  console.log('上报隐私拒绝事件');
+                  resolve({ event: 'disagree' });
+                  this.privacyResolve = null;
+                }
               }
-            } else {
-              console.log('用户拒绝隐私协议');
-              // 更新本地状态
-              this.privacyAgreed = false;
-              this.syncPrivacyStatusToCover();
-              // 上报拒绝事件
+            },
+            fail: (err) => {
+              console.error('微信Modal失败:', err);
+              // Modal失败，上报拒绝
               if (this.privacyResolve === resolve) {
-                console.log('上报隐私拒绝事件');
                 resolve({ event: 'disagree' });
                 this.privacyResolve = null;
               }
+            },
+            complete: () => {
+              console.log('微信Modal完成');
             }
-          },
-          fail: (err) => {
-            console.error('微信Modal失败:', err);
-            // Modal失败，上报拒绝
-            if (this.privacyResolve === resolve) {
-              resolve({ event: 'disagree' });
-              this.privacyResolve = null;
-            }
-          },
-          complete: () => {
-            console.log('微信Modal完成');
-          }
+          });
+          
+          // 上报隐私弹窗已曝光（Modal已显示）
+          console.log('上报隐私弹窗曝光事件');
+          resolve({ event: 'exposureAuthorization' });
         });
-        
-        // 上报隐私弹窗已曝光（Modal已显示）
-        console.log('上报隐私弹窗曝光事件');
-        resolve({ event: 'exposureAuthorization' });
-      });
-   }
+     }
 
-  /**
+    /**
+     * 创建微信用户信息授权按钮
+     */
+    createUserInfoButton() {
+      if (this.userInfoButton) {
+        this.userInfoButton.destroy();
+        this.userInfoButton = null;
+      }
+      if (typeof wx === 'undefined' || !wx.createUserInfoButton) return;
+
+      // 计算按钮位置（Play按钮下方，类似隐私条例位置）
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const buttonWidth = 200;
+      const buttonHeight = 40;
+      
+      // Play按钮位置（与cover.js保持一致）
+      const playButtonWidth = 300;
+      const playButtonHeight = 70;
+      const playButtonX = canvasWidth / 2 - playButtonWidth / 2;
+      const playButtonY = canvasHeight / 2 + 150;
+      
+      // 放在Play按钮下方30像素（隐私条例原来的位置）
+      const buttonX = canvasWidth / 2 - buttonWidth / 2;
+      const buttonY = playButtonY + playButtonHeight + 30;
+
+       this.userInfoButton = wx.createUserInfoButton({
+         type: 'text',
+         text: '获取头像',
+         style: {
+           left: buttonX,
+           top: buttonY,
+           width: buttonWidth,
+           height: buttonHeight,
+           lineHeight: buttonHeight,
+           backgroundColor: '#4CAF50',
+           color: '#ffffff',
+           textAlign: 'center',
+           fontSize: 14,
+           borderRadius: 18
+         }
+       });
+
+      this.userInfoButton.onTap((res) => {
+        console.log('用户信息按钮点击结果:', res);
+        if (res.errMsg === 'getUserInfo:ok') {
+          const { nickName, avatarUrl } = res.userInfo;
+          console.log('获取到微信用户信息:', nickName);
+          updateUserInfo(nickName, avatarUrl);
+          this.userInfoBound = true;
+          try { wx.setStorageSync('userInfoBound', true); } catch (e) {}
+          if (this.cover && this.cover.setUserInfoBound) {
+            this.cover.setUserInfoBound(true);
+          }
+          // 销毁按钮
+          this.destroyUserInfoButton();
+        } else {
+          console.warn('用户拒绝授权用户信息:', res.errMsg);
+        }
+      });
+    }
+
+    /**
+     * 销毁微信用户信息授权按钮
+     */
+    destroyUserInfoButton() {
+      if (this.userInfoButton) {
+        this.userInfoButton.destroy();
+        this.userInfoButton = null;
+      }
+    }
+
+    /**
    * 初始化检查用户隐私授权状态
    */
   initPrivacyStatusCheck() {
@@ -138,6 +229,14 @@ export default class Main {
           console.log('用户已同意隐私协议，初始化勾选状态');
           this.privacyAgreed = true;
           this.syncPrivacyStatusToCover();
+          // 标记授权已完成（勾选框消失）
+          if (this.cover && this.cover.setAuthorizationCompleted) {
+            this.cover.setAuthorizationCompleted(true);
+          }
+          // 保存到本地存储
+          try { wx.setStorageSync('privacyAuthorized', true); } catch (e) {}
+          // 尝试绑定微信用户信息
+          this.tryBindUserInfo();
         } else {
           console.log('用户需要授权隐私协议，保持未勾选状态');
         }
@@ -147,145 +246,65 @@ export default class Main {
       }
     });
   }
+  
+   /**
+    * 处理封面隐私协议操作
+    */
+   handleCoverPrivacyAction(action, data) {    
+     switch (action) {
+       case 'checkboxClick':
+         // 用户点击了隐私协议勾选框
+         this.handlePrivacyCheckboxClick();
+         break;
+       case 'termsClick':
+         // 用户点击了用户服务协议链接
+         this.openPrivacyContract('terms');
+         break;
+       case 'privacyClick':
+         // 用户点击了隐私保护政策链接
+         this.openPrivacyContract('privacy');
+         break;
+       case 'getAgreedStatus':
+         // 封面请求获取当前同意状态
+         return this.privacyAgreed;
 
-   /**
-    * 处理隐私协议同意
-    */
-    handlePrivacyAgree() {
-      console.log('用户同意隐私协议');
-      this.privacyAgreed = true;
-      
-      // 更新封面显示状态
-      if (this.cover && this.cover.setPrivacyAgreed) {
-        this.cover.setPrivacyAgreed(true);
-      }
-      
-      if (this.privacyResolve) {
-        console.log('====上报隐私同意====');
-        this.privacyResolve({ event: 'agree' });
-        this.privacyResolve = null;
-      }
-    }
-  
-    /**
-     * 处理隐私协议拒绝
-     */
-    handlePrivacyDisagree() {
-      console.log('用户拒绝隐私协议');
-      this.privacyAgreed = false;
-      
-      // 更新封面显示状态
-      if (this.cover && this.cover.setPrivacyAgreed) {
-        this.cover.setPrivacyAgreed(false);
-      }
-      
-      if (this.privacyResolve) {
-        this.privacyResolve({ event: 'disagree' });
-        this.privacyResolve = null;
-      }
-    }
-  
-  /**
-   * 处理封面隐私协议操作
-   */
-  handleCoverPrivacyAction(action, data) {    
-    switch (action) {
-      case 'checkboxClick':
-        // 用户点击了隐私协议勾选框
-        this.handlePrivacyCheckboxClick();
-        break;
-      case 'termsClick':
-        // 用户点击了用户服务协议链接
-        this.openPrivacyContract('terms');
-        break;
-      case 'privacyClick':
-        // 用户点击了隐私保护政策链接
-        this.openPrivacyContract('privacy');
-        break;
-      case 'getAgreedStatus':
-        // 封面请求获取当前同意状态
-        return this.privacyAgreed;
-      default:
-        console.warn('未知的隐私协议操作:', action);
-    }
-  }
-  
-   /**
-    * 处理隐私协议勾选框点击
-    */
-   handlePrivacyCheckboxClick() {
-     console.log('=== 隐私协议勾选框点击开始 ===');
-     
-     // 切换状态
-     const newState = !this.privacyAgreed;
-     console.log('状态从', this.privacyAgreed, '切换到', newState);
-     
-     // 更新本地状态
-     this.privacyAgreed = newState;
-     
-     // 同步到cover
-     if (this.cover && this.cover.setPrivacyAgreed) {
-       this.cover.setPrivacyAgreed(newState);
+       default:
+         console.warn('未知的隐私协议操作:', action);
      }
-     
-      // 如果有等待中的privacyResolve（授权流程已开始），直接处理同意/拒绝
-      if (this.privacyResolve) {
-        console.log('有等待中的privacyResolve，处理同意/拒绝');
-        if (newState) {
-          console.log('用户同意 -> 调用resolve({ event: "agree" })');
-          this.privacyResolve({ event: 'agree' });
-          this.privacyResolve = null;
-        } else {
-          console.log('用户拒绝 -> 不调用resolve，等待用户重新勾选');
-          // 用户取消勾选，不调用resolve，等待用户重新勾选
-        }
-      }
-  
-     console.log('=== 隐私协议勾选框点击结束 ===');
-   }
-  
-  /**
-   * 处理隐私弹窗确认按钮点击
-   */
-  async handlePrivacyModalConfirm() {
-    console.log('=== 隐私弹窗确认按钮点击 ===');
-    
-    // 获取弹窗内的勾选框状态
-    let modalAgreed = false;
-    if (this.cover && this.cover.privacyModal) {
-      modalAgreed = this.cover.privacyModal.checkbox.checked;
-      console.log('弹窗内勾选框状态:', modalAgreed);
     }
+   
+
+   
+     /**
+      * 处理隐私协议勾选框点击
+      */
+      handlePrivacyCheckboxClick() {
+       console.log('=== 隐私协议勾选框点击开始 ===');
+       
+       // 调用微信隐私授权，触发原生弹窗
+       console.log('调用微信隐私授权');
+       if (typeof wx === 'undefined' || !wx.requirePrivacyAuthorize || isDebugMode) {
+         console.log('模拟模式：直接返回');
+         return;
+       }
+       
+       wx.requirePrivacyAuthorize({
+         success: () => {
+           console.log('wx.requirePrivacyAuthorize success: 用户同意隐私协议');
+           // 状态已在onNeedPrivacyAuthorization回调中更新，此处只尝试绑定用户信息
+           this.tryBindUserInfo();
+         },
+         fail: (err) => {
+           console.log('wx.requirePrivacyAuthorize fail: 用户拒绝隐私协议，错误信息:', err);
+           // 状态已在onNeedPrivacyAuthorization回调中更新
+         },
+         complete: () => {
+           console.log('wx.requirePrivacyAuthorize complete');
+         }
+       });
     
-    if (!modalAgreed) {
-      console.log('弹窗内未勾选，无法同意隐私协议');
-      // 可以显示提示信息
-      return;
-    }
-    
-    // 用户同意隐私协议
-    this.handlePrivacyAgree();
-    
-    // 隐藏弹窗
-    if (this.cover && this.cover.hidePrivacyModal) {
-      this.cover.hidePrivacyModal();
-    }
-  }
-  
-  /**
-   * 处理隐私弹窗取消按钮点击
-   */
-  handlePrivacyModalCancel() {
-    console.log('=== 隐私弹窗取消按钮点击 ===');
-    
-    // 用户取消/拒绝隐私协议
-    this.handlePrivacyDisagree();
-    
-    // 隐藏弹窗
-    if (this.cover && this.cover.hidePrivacyModal) {
-      this.cover.hidePrivacyModal();
-    }
-  }
+       console.log('=== 隐私协议勾选框点击结束 ===');
+     }
   
   /**
    * 打开隐私协议合同
@@ -318,71 +337,47 @@ export default class Main {
      }
    }
 
-   /**
-    * 请求隐私授权（Promise包装）
-    */
-    requestPrivacyAuthorization() {
-      console.log('requestPrivacyAuthorization被调用');
-      
-      if (typeof wx === 'undefined' || !wx.requirePrivacyAuthorize || isDebugMode) {
-        console.log('模拟模式：直接返回true');
-        return Promise.resolve(true);
-      }
-      
-      return new Promise((resolve, reject) => {
-        // 先查询当前隐私设置状态
-        if (wx.getPrivacySetting) {
-          wx.getPrivacySetting({
-            success: (res) => {
-              console.log('wx.getPrivacySetting结果:', res);
-              if (!res.needAuthorization) {
-                // 不需要授权，用户已同意
-                console.log('用户已同意隐私协议，无需再次授权');
-                this.privacyAgreed = true;
-                this.syncPrivacyStatusToCover();
-                resolve(true);
-                return;
-              }
-              // 需要授权，调用requirePrivacyAuthorize
-              this.callRequirePrivacyAuthorize(resolve, reject);
-            },
-            fail: (err) => {
-              console.warn('wx.getPrivacySetting失败:', err);
-              // 降级处理，直接调用requirePrivacyAuthorize
-              this.callRequirePrivacyAuthorize(resolve, reject);
-            }
-          });
-        } else {
-          // 没有getPrivacySetting，直接调用requirePrivacyAuthorize
-          this.callRequirePrivacyAuthorize(resolve, reject);
-        }
-      });
-    }
-    
     /**
-     * 调用wx.requirePrivacyAuthorize发起隐私授权请求
+     * 尝试绑定微信用户信息
      */
-    callRequirePrivacyAuthorize(resolve, reject) {
-      console.log('调用wx.requirePrivacyAuthorize');
-      
-      wx.requirePrivacyAuthorize({
-        success: () => {
-          console.log('wx.requirePrivacyAuthorize success: 用户同意隐私协议');
-          this.privacyAgreed = true;
-          this.syncPrivacyStatusToCover();
-          resolve(true);
-        },
-        fail: (err) => {
-          console.log('wx.requirePrivacyAuthorize fail: 用户拒绝隐私协议，错误信息:', err);
-          this.privacyAgreed = false;
-          this.syncPrivacyStatusToCover();
-          reject(err);
-        },
-        complete: () => {
-          console.log('wx.requirePrivacyAuthorize complete');
-        }
-      });
-    }
+    tryBindUserInfo() {
+      if (this.userInfoBound) return;
+      if (typeof wx === 'undefined' || isDebugMode) return;
+
+      wx.getSetting({
+       success: (res) => {
+         console.log('wx.getSetting', res)
+         if (res.authSetting['scope.userInfo']) {
+           wx.getUserInfo({
+             withCredentials: true,
+             success: (res) => {
+               const { nickName, avatarUrl } = res.userInfo;
+               console.log('获取到微信用户信息:', nickName);
+               updateUserInfo(nickName, avatarUrl);
+               this.userInfoBound = true;
+               try { wx.setStorageSync('userInfoBound', true); } catch (e) {}
+               if (this.cover && this.cover.setUserInfoBound) {
+                 this.cover.setUserInfoBound(true);
+               }
+               // 销毁用户信息按钮（如果存在）
+               this.destroyUserInfoButton();
+             },
+             fail: (err) => {
+               console.warn('wx.getUserInfo 失败:', err);
+             }
+           });
+         } else {
+           // 创建微信用户信息授权按钮
+           this.createUserInfoButton();
+         }
+       },
+       fail: (err) => {
+         console.warn('wx.getSetting 失败:', err);
+       }
+     });
+   }
+
+
 
    /**
     * 绑定全局事件
@@ -423,13 +418,7 @@ export default class Main {
       } else if (clickedId === 'settingsNav') {
         console.log('打开设置页面');
         // 待实现
-      } else if (clickedId === 'agree-btn') {
-        console.log('用户点击弹窗确认按钮，触发隐私授权');
-        this.handlePrivacyModalConfirm();
-      } else if (clickedId === 'privacyCancel') {
-        console.log('用户点击弹窗取消按钮');
-        this.handlePrivacyModalCancel();
-      }
+      } 
     } else if (this.currentState === 'game' && this.game) {
       this.game.handleTouch(x, y);
     }
@@ -441,27 +430,8 @@ export default class Main {
     async startGame() {
       console.log('开始游戏');
       
-      // 检查隐私协议
-      if (!this.privacyAgreed) {
-        console.warn('请先同意用户服务协议和隐私保护政策');
-        // TODO: 显示UI提示
-        return;
-      }
-      
-      // 如果用户已同意但授权流程未开始，发起微信授权
-      if (!this.privacyResolve) {
-        console.log('用户已同意隐私协议，发起微信授权流程');
-        try {
-          const authorized = await this.requestPrivacyAuthorization();
-          if (!authorized) {
-            console.warn('隐私授权未完成，无法开始游戏');
-            return;
-          }
-        } catch (err) {
-          console.error('隐私授权流程异常:', err);
-          return;
-        }
-      }
+       // 根据文档，Play按钮直接开始游戏，无任何前置授权检查
+       // 隐私授权通过勾选框触发，不在此处处理
     
     // 检查体力
     if (!this.energyManager.hasEnoughEnergy()) {
@@ -478,20 +448,37 @@ export default class Main {
     
     console.log(`消耗${this.energyManager.costPerGame}点体力，剩余${this.energyManager.getCurrentEnergy()}/${this.energyManager.maxEnergy}`);
     
+    // 加载玩家数据（从云数据库或本地存储）
+    try {
+      this.playerData = await getOrCreatePlayerData();
+      if (this.playerData) {
+        this.savedLevel = this.playerData.level || 1;
+        this.savedHighScore = this.playerData.highScore || 0;
+        console.log(`玩家数据加载成功: 关卡=${this.savedLevel}, 最高分=${this.savedHighScore}`);
+      }
+    } catch (err) {
+      console.warn('加载玩家数据失败，使用默认值:', err);
+      this.savedLevel = 1;
+      this.savedHighScore = 0;
+    }
+    
     // 隐藏封面
     if (this.cover) {
       this.cover.hide();
     }
-    
+
+    // 根据文档，头像授权按钮应保留直到用户授权，不在此处销毁
+    // this.destroyUserInfoButton();
+
     // 停止主循环（封面渲染）
     this.stopMainLoop();
     
     // 创建游戏实例
     if (!this.game) {
-      this.game = new TetrisGame(this.ctx);
+      this.game = new TetrisGame(this.ctx, this.savedLevel, this.savedHighScore);
       this.game.start();
     } else {
-      this.game.restart();
+      this.game.restart(this.savedLevel, this.savedHighScore);
       this.game.start();
     }
     
@@ -515,7 +502,10 @@ export default class Main {
     }
     
     this.currentState = 'cover';
-    
+
+    // 尝试绑定微信用户信息（如果尚未绑定）
+    this.tryBindUserInfo();
+
     // 重新启动主循环（封面渲染）
     this.startMainLoop();
   }

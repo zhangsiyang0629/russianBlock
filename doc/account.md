@@ -3,6 +3,9 @@
 ## 存储方案
 - 使用**微信云开发**的云数据库进行数据存储。
 
+## 目的
+- 记录玩家游戏关卡进度，每次进入游戏从已通过关卡数+1的关卡开始游戏
+
 ## 数据表结构
 
 **集合名称**：`player_data`
@@ -25,6 +28,9 @@
   ```javascript
   const randomStr = Math.random().toString().slice(2, 8);
   const defaultNick = `游客${Date.now()}${randomStr}`;
+
+ ## 重新授权
+ -  用户重新授权后，需要将nickname和avatarUrl修改为用户的微信名称与头像
 
 ## 落地时机
 - 玩家首次进入游戏时

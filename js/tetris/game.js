@@ -2,6 +2,7 @@ import Grid from './grid.js';
 import Tetromino from './block.js';
 import AdManager from './ad.js';
 import PengfuAnimation from './animation.js';
+import { saveOnLevelComplete, saveOnGameOver } from './playerData.js';
 
 // 设计系统颜色（来自Google Stitch原型）
 const COLORS = {
@@ -96,7 +97,7 @@ const SCORE_CONFIG = {
   // 消行得分（0-4行）
   lineClearPoints: [0, 10, 25, 50, 80],
   // 升级所需分数
-  levelUpThreshold: 10,
+  levelUpThreshold: 200,
 };
 
 // 设计效果
@@ -129,7 +130,7 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
  * 俄罗斯方块游戏主类
  */
 export default class TetrisGame {
-  constructor(ctx) {
+  constructor(ctx, savedLevel = 1, savedHighScore = 0) {
     this.ctx = ctx;
     const canvas = ctx.canvas;
     
@@ -145,7 +146,8 @@ export default class TetrisGame {
     // 初始化关卡难度配置
     this.gameOver = false;
     this.score = 0;
-    this.level = 3; // 当前关卡（阶段）
+    this.level = savedLevel; // 从玩家数据加载的关卡
+    this.highScore = savedHighScore; // 从玩家数据加载的最高分
     this.linesCleared = 0;
     this.updateLevelConfig();
     
@@ -352,6 +354,12 @@ export default class TetrisGame {
       this.gameOver = true;
       console.log('Game Over!');
       
+      // 更新最高分并保存玩家数据
+      if (this.score > this.highScore) {
+        this.highScore = this.score;
+      }
+      saveOnGameOver(this.score, this.highScore);
+      
       // 播放死亡动画（屏幕右下角）
       const canvas = this.ctx.canvas;
       // 根据屏幕尺寸调整缩放比例（高度宽度都放大一倍）
@@ -428,6 +436,15 @@ export default class TetrisGame {
     ctx.textBaseline = 'top';
     ctx.fillText(`STAGE ${this.level}`, scoreCardWidth / 2, scoreCardHeight - 8);
     
+    ctx.restore();
+    
+    // 最高分显示（分数卡片下方）
+    ctx.save();
+    ctx.fillStyle = COLORS.onSurfaceVariant;
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`BEST ${this.highScore}`, scoreCardX + scoreCardWidth / 2, scoreCardY + scoreCardHeight + 5);
     ctx.restore();
     
     // 右侧下一个方块预览卡片（缩小1/3）
@@ -807,6 +824,14 @@ export default class TetrisGame {
       const messages = ['算你走运', '太牛啦', '一般般'];
       this.victoryMessage = messages[Math.floor(Math.random() * messages.length)];
       
+      // 更新最高分
+      if (this.score > this.highScore) {
+        this.highScore = this.score;
+      }
+      
+      // 保存玩家数据（关卡和最高分）
+      saveOnLevelComplete(this.level, this.score, this.highScore);
+      
       console.log(`升级: ${oldLevel} -> ${this.level}, 格子=${GRID_SIZES[this.gridSizeIndex].cols}x${GRID_SIZES[this.gridSizeIndex].rows}, 速度=${SPEED_RATES[this.speedIndex]}, 初始层=${this.initialLayers}`);
     }
   }
@@ -1115,7 +1140,7 @@ export default class TetrisGame {
       
       // 弹窗尺寸和位置
       const popupWidth = canvas.width * 0.7;
-      const popupHeight = 300; // 增加高度以容纳两个按钮
+      const popupHeight = 330; // 增加高度以容纳最高分文字和两个按钮
       const popupX = (canvas.width - popupWidth) / 2;
       const popupY = adHeight + (canvas.height - adHeight - popupHeight) / 2;
       
@@ -1138,6 +1163,11 @@ export default class TetrisGame {
       ctx.font = '24px Arial';
       ctx.fillText(`最终分数: ${this.score}`, popupX + popupWidth / 2, popupY + 100);
       
+      // 最高分
+      ctx.font = '18px Arial';
+      ctx.fillStyle = COLORS.onSurfaceVariant;
+      ctx.fillText(`最高分: ${this.highScore}`, popupX + popupWidth / 2, popupY + 130);
+      
       // 按钮尺寸
       const buttonWidth = 180;
       const buttonHeight = 50;
@@ -1145,7 +1175,7 @@ export default class TetrisGame {
       const buttonSpacing = 20; // 按钮间距
       
       // 复活按钮（上方）
-      const reviveButtonY = popupY + 140;
+      const reviveButtonY = popupY + 155;
       const reviveButtonColor = this.reviveUsed ? COLORS.outlineVariant : COLORS.secondary; // 已使用则为灰色
       const reviveButtonBorderColor = this.reviveUsed ? COLORS.outline : COLORS.secondaryContainer;
       
@@ -1262,13 +1292,14 @@ export default class TetrisGame {
   /**
    * 重新开始游戏
    */
-  restart() {
+  restart(savedLevel, savedHighScore) {
     this.grid = new Grid(this.cellSize);
     this.currentBlock = null;
     this.nextBlock = null;
     this.gameOver = false;
     this.score = 0;
-    this.level = 1;
+    this.level = savedLevel || this.level;
+    this.highScore = savedHighScore || this.highScore;
     this.linesCleared = 0;
     this.dropInterval = 1000;
     this.dropCounter = 0;

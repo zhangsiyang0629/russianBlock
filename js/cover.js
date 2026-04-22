@@ -28,7 +28,6 @@ export default class Cover {
     // 隐私协议状态
     this.privacyAgreed = false; // 初始状态为未同意
     this.privacyCheckbox = { id: 'privacyCheckbox', x: 0, y: 0, size: 20 };
-    this.privacyText = '我已详细阅读并同意<用户服务协议>和<隐私保护政策>';
     this.privacyLinks = {
       terms: { id: 'termsLink', text: '用户服务协议' },
       privacy: { id: 'privacyLink', text: '隐私保护政策' }
@@ -40,6 +39,17 @@ export default class Cover {
     
     // 隐私协议状态管理
     this.privacyPending = false; // 授权进行中标志
+    // 从本地存储读取授权完成状态，避免启动时勾选框闪烁
+    let savedAuth = false;
+    try {
+      savedAuth = !!wx.getStorageSync('privacyAuthorized');
+    } catch (e) {}
+    this.authorizationCompleted = savedAuth; // 微信隐私授权是否已完成
+
+    // 微信用户信息绑定状态
+    let savedUserInfoBound = false;
+    try { savedUserInfoBound = !!wx.getStorageSync('userInfoBound'); } catch (e) {}
+    this.userInfoBound = savedUserInfoBound;
     
     // 隐私授权弹窗
     this.privacyModal = {
@@ -192,8 +202,7 @@ export default class Cover {
     // 绘制底部导航
     this.drawBottomNav();
 
-    // 绘制隐私协议确认弹窗（如果有）
-    this.drawPrivacyModal(ctx, canvas);
+
   }
   
   /**
@@ -372,17 +381,16 @@ export default class Cover {
     }
   }
 
+
+
   /**
-   * 显示隐私协议确认弹窗
-   * @param {boolean} useCurrentAgreed 是否使用当前隐私协议同意状态作为默认勾选状态
+   * 设置微信用户信息绑定状态
+   * @param {boolean} bound - 是否已绑定微信用户信息
    */
-   showPrivacyModal(useCurrentAgreed = true) {
-     console.log('显示隐私协议确认弹窗（已改用微信原生Modal），useCurrentAgreed:', useCurrentAgreed);
-     // 使用微信原生Modal，Canvas弹窗不显示
-     this.privacyModal.show = false;
-     this.privacyModal.checkbox.checked = useCurrentAgreed ? this.privacyAgreed : false;
-     console.log('弹窗状态: show=', this.privacyModal.show, 'checkbox.checked=', this.privacyModal.checkbox.checked);
-   }
+  setUserInfoBound(bound) {
+    console.log('setUserInfoBound: 设置状态为', bound);
+    this.userInfoBound = bound;
+  }
 
   /**
    * 隐藏隐私协议确认弹窗
@@ -392,170 +400,7 @@ export default class Cover {
     this.privacyModal.show = false;
   }
 
-  /**
-   * 绘制隐私协议确认弹窗
-   */
-  drawPrivacyModal(ctx, canvas) {
-    if (!this.privacyModal.show) return;
 
-    const modal = this.privacyModal;
-    const modalWidth = Math.min(canvas.width - 80, 500);
-    const modalHeight = 280;
-    const modalX = (canvas.width - modalWidth) / 2;
-    const modalY = (canvas.height - modalHeight) / 2;
-
-    // 绘制半透明背景
-    ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
-
-    // 绘制弹窗背景
-    ctx.save();
-    ctx.fillStyle = '#FFFFFF';
-    ctx.strokeStyle = '#DDDDDD';
-    ctx.lineWidth = 1;
-    // 绘制圆角矩形（简化版，使用普通矩形）
-    this.drawRoundedRect(ctx, modalX, modalY, modalWidth, modalHeight, 8);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    // 绘制标题
-    ctx.save();
-    ctx.fillStyle = '#333333';
-    ctx.font = 'bold 18px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(modal.title, modalX + modalWidth / 2, modalY + 40);
-    ctx.restore();
-
-    // 绘制消息
-    ctx.save();
-    ctx.fillStyle = '#666666';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'left';
-    const messageLines = this.wrapText(ctx, modal.message, modalWidth - 80);
-    const lineHeight = 20;
-    messageLines.forEach((line, index) => {
-      ctx.fillText(line, modalX + 40, modalY + 80 + index * lineHeight);
-    });
-    ctx.restore();
-
-    // 绘制勾选框区域
-    const checkbox = modal.checkbox;
-    checkbox.x = modalX + 40;
-    checkbox.y = modalY + 140;
-    
-    // 绘制勾选框边框
-    ctx.save();
-    ctx.strokeStyle = checkbox.checked ? '#4CAF50' : '#888888';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(checkbox.x, checkbox.y, checkbox.size, checkbox.size);
-    
-    // 如果已勾选，绘制对勾
-    if (checkbox.checked) {
-      ctx.fillStyle = '#4CAF50';
-      ctx.fillRect(checkbox.x + 4, checkbox.y + 4, checkbox.size - 8, checkbox.size - 8);
-      
-      // 绘制白色对勾
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(checkbox.x + 6, checkbox.y + checkbox.size / 2);
-      ctx.lineTo(checkbox.x + checkbox.size / 2, checkbox.y + checkbox.size - 6);
-      ctx.lineTo(checkbox.x + checkbox.size - 6, checkbox.y + 8);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // 绘制勾选框文本
-    ctx.save();
-    ctx.fillStyle = '#333333';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('我已详细阅读并同意上述隐私协议', 
-                 checkbox.x + checkbox.size + 10, 
-                 checkbox.y + checkbox.size / 2 + 4);
-    ctx.restore();
-
-    // 计算按钮位置
-    const buttonSpacing = 20;
-    const totalButtonWidth = modal.confirmButton.width + buttonSpacing + modal.cancelButton.width;
-    const buttonStartX = modalX + (modalWidth - totalButtonWidth) / 2;
-    
-    // 更新确认按钮坐标
-    modal.confirmButton.x = buttonStartX;
-    modal.confirmButton.y = modalY + modalHeight - 70;
-    
-    // 绘制确认按钮
-    this.drawButton(ctx, modal.confirmButton, 8, modal.confirmButton.color, '#FFFFFF');
-
-    // 更新取消按钮坐标
-    modal.cancelButton.x = buttonStartX + modal.confirmButton.width + buttonSpacing;
-    modal.cancelButton.y = modalY + modalHeight - 70;
-    
-    // 绘制取消按钮
-    this.drawButton(ctx, modal.cancelButton, 8, modal.cancelButton.color, '#FFFFFF');
-  }
-
-  /**
-   * 文本换行工具函数
-   */
-  wrapText(ctx, text, maxWidth) {
-    const words = text.split(' ');
-    const lines = [];
-    let currentLine = words[0];
-
-    for (let i = 1; i < words.length; i++) {
-      const word = words[i];
-      const width = ctx.measureText(currentLine + ' ' + word).width;
-      if (width < maxWidth) {
-        currentLine += ' ' + word;
-      } else {
-        lines.push(currentLine);
-        currentLine = word;
-      }
-    }
-    lines.push(currentLine);
-    return lines;
-  }
-
-  /**
-   * 处理弹窗内的点击
-   * @returns {string|null} 被点击的元素ID
-   */
-  handleModalClick(x, y) {
-    if (!this.privacyModal.show) return null;
-
-    const modal = this.privacyModal;
-    
-    // 检查勾选框点击
-    const checkbox = modal.checkbox;
-    if (x >= checkbox.x && x <= checkbox.x + checkbox.size &&
-        y >= checkbox.y && y <= checkbox.y + checkbox.size) {
-      console.log('点击弹窗内勾选框，当前状态:', modal.checkbox.checked);
-      modal.checkbox.checked = !modal.checkbox.checked;
-      return 'privacyModalCheckbox';
-    }
-    
-    // 检查确认按钮点击
-    const confirmButton = modal.confirmButton;
-    if (x >= confirmButton.x && x <= confirmButton.x + confirmButton.width &&
-        y >= confirmButton.y && y <= confirmButton.y + confirmButton.height) {
-      console.log('点击弹窗确认按钮');
-      return 'agree-btn';
-    }
-    
-    // 检查取消按钮点击
-    const cancelButton = modal.cancelButton;
-    if (x >= cancelButton.x && x <= cancelButton.x + cancelButton.width &&
-        y >= cancelButton.y && y <= cancelButton.y + cancelButton.height) {
-      console.log('点击弹窗取消按钮');
-      return 'privacyCancel';
-    }
-    
-    return null;
-  }
 
   /**
    * 绘制圆角矩形
@@ -634,17 +479,17 @@ export default class Cover {
       }
     }
     
-    //console.log(`PLAY按钮坐标: x=${playButton.x}, y=${playButton.y}, width=${playButton.width}, height=${playButton.height}, canvas=${canvas.width}x${canvas.height}`);
     this.drawButton(ctx, playButton, 0, buttonColor, textColor, isDisabled);
     
-    // 绘制隐私协议勾选框
+    // 绘制隐私协议（授权未完成时）
     this.drawPrivacyAgreement(ctx, canvas, playButton);
   }
-  
+
   /**
    * 绘制隐私协议勾选框和文本
    */
   drawPrivacyAgreement(ctx, canvas, playButton) {
+    if (this.authorizationCompleted) return;
     const checkboxSize = this.privacyCheckbox.size;
     const isAgreed = this.getPrivacyAgreed();
     
@@ -670,7 +515,6 @@ export default class Cover {
     // 更新勾选框坐标
     this.privacyCheckbox.x = checkboxX;
     this.privacyCheckbox.y = checkboxY;
-    // console.log(`更新勾选框坐标: x=${checkboxX}, y=${checkboxY}, playButton.y=${playButton.y}, playButton.height=${playButton.height}`);
     
     // 绘制勾选框边框
     ctx.save();
@@ -790,22 +634,7 @@ export default class Cover {
     ctx.restore();
   }
   
-  /**
-   * 绘制圆角矩形路径
-   */
-  drawRoundedRect(ctx, x, y, width, height, radius) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-  }
+
   
   /**
    * 绘制底部导航
@@ -871,17 +700,7 @@ export default class Cover {
     
     console.log(`点击坐标: x=${x}, y=${y}, canvas=${this.canvas.width}x${this.canvas.height}`);
     
-    // 首先检查弹窗点击（如果弹窗显示）
-    if (this.privacyModal.show) {
-      const modalResult = this.handleModalClick(x, y);
-      if (modalResult) {
-        console.log('弹窗点击结果:', modalResult);
-        return modalResult;
-      }
-      // 如果点击了弹窗区域外，可以关闭弹窗或忽略
-      // 这里我们忽略弹窗外点击，让用户必须点击按钮
-      return null;
-    }
+
     
     // 检查按钮点击
     for (const button of this.buttons) {
@@ -889,22 +708,12 @@ export default class Cover {
           y >= button.y && y <= button.y + button.height) {
         console.log(`点击按钮: ${button.id}`);
         
-        // 特殊处理PLAY按钮：检查体力和隐私协议
+        // 特殊处理PLAY按钮：检查体力
         if (button.id === 'play') {
-          // 检查隐私协议 - 通过回调获取最新状态
-          if (!this.getPrivacyAgreed()) {
-            console.warn('请先同意用户服务协议和隐私保护政策');
-            // TODO: 显示UI提示
-            return null;
-          }
-          
-          // 检查体力
           if (this.getEnergyInfo) {
             const energyInfo = this.getEnergyInfo();
-            //console.log('PLAY按钮点击，体力信息:', energyInfo);
             if (energyInfo && !energyInfo.hasEnough) {
               console.warn('体力不足，无法开始游戏');
-              // TODO: 显示UI提示
               return null;
             }
           }
@@ -916,35 +725,37 @@ export default class Cover {
     
     console.log('未命中任何按钮，按钮坐标:', JSON.stringify(this.buttons));
     
-    // 检查隐私协议勾选框点击
-    const checkbox = this.privacyCheckbox;
-    console.log(`勾选框坐标: x=${checkbox.x}-${checkbox.x + checkbox.size}, y=${checkbox.y}-${checkbox.y + checkbox.size}, 点击坐标: x=${x}, y=${y}`);
-    if (x >= checkbox.x && x <= checkbox.x + checkbox.size &&
-        y >= checkbox.y && y <= checkbox.y + checkbox.size) {
-      console.log('点击隐私协议勾选框，当前状态:', this.privacyAgreed);
-      
-      // 立即切换本地状态，提供视觉反馈
-      const oldState = this.privacyAgreed;
-      this.privacyAgreed = !this.privacyAgreed;
-      this.privacyPending = true; // 标记授权进行中
-      console.log('勾选框点击: 状态从', oldState, '切换到', this.privacyAgreed, 'pending:', this.privacyPending);
-      
-      // 如果用户勾选了（同意），不显示弹窗，等待wx.requirePrivacyAuthorize触发
-      if (this.privacyAgreed) {
-        console.log('用户同意隐私协议，等待wx.requirePrivacyAuthorize触发弹窗');
-        // 弹窗将在wx.onNeedPrivacyAuthorization回调中显示
+    // 检查隐私协议勾选框点击（仅当授权未完成时处理）
+    if (!this.authorizationCompleted) {
+      const checkbox = this.privacyCheckbox;
+      console.log(`勾选框坐标: x=${checkbox.x}-${checkbox.x + checkbox.size}, y=${checkbox.y}-${checkbox.y + checkbox.size}, 点击坐标: x=${x}, y=${y}`);
+      if (x >= checkbox.x && x <= checkbox.x + checkbox.size &&
+          y >= checkbox.y && y <= checkbox.y + checkbox.size) {
+        console.log('点击隐私协议勾选框，当前状态:', this.privacyAgreed);
+        
+        // 立即切换本地状态，提供视觉反馈
+        const oldState = this.privacyAgreed;
+        this.privacyAgreed = !this.privacyAgreed;
+        this.privacyPending = true; // 标记授权进行中
+        console.log('勾选框点击: 状态从', oldState, '切换到', this.privacyAgreed, 'pending:', this.privacyPending);
+        
+        // 如果用户勾选了（同意），不显示弹窗，等待wx.requirePrivacyAuthorize触发
+        if (this.privacyAgreed) {
+          console.log('用户同意隐私协议，等待wx.requirePrivacyAuthorize触发弹窗');
+          // 弹窗将在wx.onNeedPrivacyAuthorization回调中显示
+        }
+        
+        // 通过回调函数处理隐私协议勾选框点击
+        if (this.onPrivacyAction) {
+          console.log('调用onPrivacyAction(checkboxClick)');
+          this.onPrivacyAction('checkboxClick');
+        } else {
+          console.warn('onPrivacyAction回调不存在！');
+        }
+        return 'privacyCheckbox';
       }
-      
-      // 通过回调函数处理隐私协议勾选框点击
-      if (this.onPrivacyAction) {
-        console.log('调用onPrivacyAction(checkboxClick)');
-        this.onPrivacyAction('checkboxClick');
-      } else {
-        console.warn('onPrivacyAction回调不存在！');
-      }
-      return 'privacyCheckbox';
     }
-    
+
     // 检查协议链接点击
     for (const linkKey of ['terms', 'privacy']) {
       const link = this.privacyLinks[linkKey];
@@ -1049,6 +860,15 @@ export default class Cover {
   }
   
   /**
+   * 设置隐私授权是否已完成（勾选框消失条件）
+   * @param {boolean} completed - 微信隐私授权是否已完成
+   */
+  setAuthorizationCompleted(completed) {
+    console.log('setAuthorizationCompleted: 设置状态为', completed);
+    this.authorizationCompleted = completed;
+  }
+  
+  /**
    * 获取隐私协议同意状态
    * @returns {boolean} 是否已同意隐私协议
    */
@@ -1062,7 +882,6 @@ export default class Cover {
     // 如果有回调函数，通过回调获取状态
     if (this.onPrivacyAction) {
       const result = this.onPrivacyAction('getAgreedStatus');
-      //console.log('getPrivacyAgreed: 回调返回', result, '本地状态:', this.privacyAgreed);
       if (typeof result === 'boolean') {
         this.privacyAgreed = result;
         console.log('getPrivacyAgreed: 更新本地状态为', this.privacyAgreed);
