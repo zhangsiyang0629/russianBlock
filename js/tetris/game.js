@@ -96,9 +96,7 @@ const SCORE_CONFIG = {
   // 消行得分（0-4行）
   lineClearPoints: [0, 10, 25, 50, 80],
   // 升级所需分数
-  levelUpThreshold: 300,
-  // 方块放置基础分
-  blockPlacementBase: 1,
+  levelUpThreshold: 10,
 };
 
 // 设计效果
@@ -145,6 +143,10 @@ export default class TetrisGame {
     this.availableHeight = canvas.height - this.adHeight - this.bottomHeight - 20; // 上下留白
     
     // 初始化关卡难度配置
+    this.gameOver = false;
+    this.score = 0;
+    this.level = 3; // 当前关卡（阶段）
+    this.linesCleared = 0;
     this.updateLevelConfig();
     
     // 根据当前网格尺寸计算合适的单元格大小
@@ -158,20 +160,9 @@ export default class TetrisGame {
     console.log(`布局计算: 屏幕=${canvas.width}x${canvas.height}, 广告高=${this.adHeight}, 底部高=${this.bottomHeight}, 可用高=${this.availableHeight}, 网格尺寸=${gridSize.cols}x${gridSize.rows}, cellSize=${safeCellSize}, 网格高=${gridSize.rows * safeCellSize}`);
     
     this.cellSize = safeCellSize; // 保存单元格大小用于重置
-    this.grid = new Grid(safeCellSize, gridSize.cols, gridSize.rows);
-    
-    // 生成初始随机砖块
-    // if (this.initialLayers > 0) {
-    //   this.grid.generateInitialLayers(this.initialLayers);
-    // }
-    
+    this.grid = new Grid(safeCellSize, gridSize.cols, gridSize.rows);  
     this.currentBlock = null;
     this.nextBlock = null;
-    this.gameOver = false;
-    this.score = 0;
-    this.totalScore = 0; // 累计得分（用于关卡进阶）
-    this.level = 1; // 当前关卡（阶段）
-    this.linesCleared = 0;
     
     // 关卡难度配置
     this.gridSizeIndex = 0; // i (0-based) 对应 GRID_SIZES 索引
@@ -781,7 +772,6 @@ export default class TetrisGame {
       this.linesCleared += lines;
       const points = this.calculateScore(lines);
       this.score += points;
-      this.totalScore += points;
       this.updateLevel();
     }
     
@@ -800,13 +790,10 @@ export default class TetrisGame {
    * 更新游戏等级（基于累计得分）
    */
   updateLevel() {
-    // 计算新的关卡（根据配置阈值升一关）
-    const newLevel = Math.floor(this.totalScore / SCORE_CONFIG.levelUpThreshold) + 1;
-    
     // 检查是否进入新关卡
-    if (newLevel > this.level) {
+    if (this.score >= SCORE_CONFIG.levelUpThreshold) {
       const oldLevel = this.level;
-      this.level = newLevel;
+      this.level = this.level+1;
       
       // 更新难度配置
       this.updateLevelConfig();
@@ -820,11 +807,9 @@ export default class TetrisGame {
       const messages = ['算你走运', '太牛啦', '一般般'];
       this.victoryMessage = messages[Math.floor(Math.random() * messages.length)];
       
-      console.log(`升级: ${oldLevel} -> ${newLevel}, 格子=${GRID_SIZES[this.gridSizeIndex].cols}x${GRID_SIZES[this.gridSizeIndex].rows}, 速度=${SPEED_RATES[this.speedIndex]}, 初始层=${this.initialLayers}`);
+      console.log(`升级: ${oldLevel} -> ${this.level}, 格子=${GRID_SIZES[this.gridSizeIndex].cols}x${GRID_SIZES[this.gridSizeIndex].rows}, 速度=${SPEED_RATES[this.speedIndex]}, 初始层=${this.initialLayers}`);
     }
   }
-
-
 
   /**
    * 更新游戏逻辑
@@ -1106,7 +1091,7 @@ export default class TetrisGame {
       // 按钮文字
       ctx.fillStyle = COLORS.onPrimary;
       ctx.font = 'bold 22px Arial';
-      ctx.fillText('NEXT', buttonX + buttonWidth / 2, buttonY + buttonHeight / 2 + 3);
+      ctx.fillText('下一关', buttonX + buttonWidth / 2, buttonY + buttonHeight / 2 + 3);
       
       // 保存按钮位置
       this.victoryButton.x = buttonX;
@@ -1238,43 +1223,41 @@ export default class TetrisGame {
     this.aniId = requestAnimationFrame(this.gameLoop.bind(this));
   }
 
-  /**
-   * 重置游戏进入下一关（保留关卡和累计得分）
-   */
-  resetForNextLevel() {
-    // 重置网格和游戏状态，但保留关卡和累计得分
-    this.grid = new Grid(this.cellSize);
-    this.currentBlock = null;
-    this.nextBlock = null;
-    this.gameOver = false;
-    this.score = 0; // 重置当前分数
-    this.linesCleared = 0; // 重置当前消除行数
-    // totalScore 和 level 保持不变
-    this.dropCounter = 0;
-    
-    // 重置按钮状态
-    this.restartButton.visible = false;
-    this.restartButton.x = 0;
-    this.restartButton.y = 0;
-    this.restartButton.width = 0;
-    this.restartButton.height = 0;
-    
-    this.reviveButton.visible = false;
-    this.reviveButton.x = 0;
-    this.reviveButton.y = 0;
-    this.reviveButton.width = 0;
-    this.reviveButton.height = 0;
-    
-    // 重置复活状态
-    this.reviveUsed = false;
-    
-    // 注意：广告管理器不会被重置，广告会继续显示
-    
-    // 停止死亡动画
-    this.pengfuAnimation.stop();
-    
-    this.createNewBlock();
-  }
+   /**
+    * 进入下一关（网格已在updateLevel中重置，此处只需隐藏弹窗并继续游戏）
+    */
+   resetForNextLevel() {
+     console.log(`进入下一关: 关卡 ${this.level}, 格子=${GRID_SIZES[this.gridSizeIndex].cols}x${GRID_SIZES[this.gridSizeIndex].rows}, 初始层数=${this.initialLayers}`);
+     
+     // 隐藏胜利弹窗
+     this.showVictoryPopup = false;
+     this.victoryButton.visible = false;
+     
+     // 重置其他弹窗按钮状态
+     this.restartButton.visible = false;
+     this.restartButton.x = 0;
+     this.restartButton.y = 0;
+     this.restartButton.width = 0;
+     this.restartButton.height = 0;
+     
+     this.reviveButton.visible = false;
+     this.reviveButton.x = 0;
+     this.reviveButton.y = 0;
+     this.reviveButton.width = 0;
+     this.reviveButton.height = 0;
+     
+     // 重置复活状态
+     this.reviveUsed = false;
+     
+     // 注意：广告管理器不会被重置，广告会继续显示
+     
+     // 停止死亡动画
+     this.pengfuAnimation.stop();
+     
+     // 网格已在updateLevel的resetGridForNewLevel中重置
+     // 当前方块和下一个方块已在resetGridForNewLevel中重置
+     // 游戏状态已更新，直接继续游戏即可
+   }
 
   /**
    * 重新开始游戏
@@ -1285,7 +1268,6 @@ export default class TetrisGame {
     this.nextBlock = null;
     this.gameOver = false;
     this.score = 0;
-    this.totalScore = 0;
     this.level = 1;
     this.linesCleared = 0;
     this.dropInterval = 1000;

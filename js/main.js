@@ -64,7 +64,6 @@ export default class Main {
      
       wx.onNeedPrivacyAuthorization((resolve, eventInfo) => {
         console.log('=== wx.onNeedPrivacyAuthorization回调被触发 ===', eventInfo.referrer);
-        console.log('当前privacyAgreed:', this.privacyAgreed, 'privacyResolve:', this.privacyResolve ? '存在' : '不存在');
         
         // 存储resolve函数供后续使用
         this.privacyResolve = resolve;
@@ -184,16 +183,12 @@ export default class Main {
         this.privacyResolve({ event: 'disagree' });
         this.privacyResolve = null;
       }
-      
-
     }
   
   /**
    * 处理封面隐私协议操作
    */
-  handleCoverPrivacyAction(action, data) {
-    // console.log('处理封面隐私协议操作:', action, data);
-    
+  handleCoverPrivacyAction(action, data) {    
     switch (action) {
       case 'checkboxClick':
         // 用户点击了隐私协议勾选框
@@ -220,7 +215,6 @@ export default class Main {
     */
    handlePrivacyCheckboxClick() {
      console.log('=== 隐私协议勾选框点击开始 ===');
-     console.log('当前状态 - privacyResolve:', this.privacyResolve ? '存在' : '不存在', 'privacyAgreed:', this.privacyAgreed);
      
      // 切换状态
      const newState = !this.privacyAgreed;
@@ -231,7 +225,6 @@ export default class Main {
      
      // 同步到cover
      if (this.cover && this.cover.setPrivacyAgreed) {
-       console.log('同步状态到cover:', newState);
        this.cover.setPrivacyAgreed(newState);
      }
      
@@ -247,7 +240,7 @@ export default class Main {
           // 用户取消勾选，不调用resolve，等待用户重新勾选
         }
       }
-     
+  
      console.log('=== 隐私协议勾选框点击结束 ===');
    }
   
@@ -256,7 +249,6 @@ export default class Main {
    */
   async handlePrivacyModalConfirm() {
     console.log('=== 隐私弹窗确认按钮点击 ===');
-    //console.log('当前状态 - privacyResolve:', this.privacyResolve ? '存在' : '不存在', 'privacyAgreed:', this.privacyAgreed);
     
     // 获取弹窗内的勾选框状态
     let modalAgreed = false;
@@ -285,7 +277,6 @@ export default class Main {
    */
   handlePrivacyModalCancel() {
     console.log('=== 隐私弹窗取消按钮点击 ===');
-    console.log('当前状态 - privacyResolve:', this.privacyResolve ? '存在' : '不存在', 'privacyAgreed:', this.privacyAgreed);
     
     // 用户取消/拒绝隐私协议
     this.handlePrivacyDisagree();
@@ -316,13 +307,6 @@ export default class Main {
       }
     });
   }
-  
-  /**
-   * 检查隐私授权状态
-   */
-   // checkPrivacyAuthorization函数已移除，改为同步处理
-
-   // callRequirePrivacyAuthorize函数已移除，改为在勾选框点击时直接调用wx.requirePrivacyAuthorize
 
    /**
     * 同步隐私状态到cover
