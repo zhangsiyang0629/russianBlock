@@ -91,6 +91,16 @@ const LEVEL_CONFIG = {
   initialLayersRange: { min: 0, max: 8 }, // 0-8层
 };
 
+// 分数配置（便于调试与调整）
+const SCORE_CONFIG = {
+  // 消行得分（0-4行）
+  lineClearPoints: [0, 10, 25, 50, 80],
+  // 升级所需分数
+  levelUpThreshold: 300,
+  // 方块放置基础分
+  blockPlacementBase: 1,
+};
+
 // 设计效果
 const EFFECTS = {
   shadowColor: 'rgba(50, 47, 34, 0.5)',
@@ -783,16 +793,15 @@ export default class TetrisGame {
    * 计算得分
    */
   calculateScore(lines) {
-    const baseScore = [0, 10, 25, 50, 80]; // 0, 1, 2, 3, 4行
-    return baseScore[lines];
+    return SCORE_CONFIG.lineClearPoints[lines];
   }
 
   /**
    * 更新游戏等级（基于累计得分）
    */
   updateLevel() {
-    // 计算新的关卡（每1500分升一关）
-    const newLevel = Math.floor(this.totalScore / 1500) + 1;
+    // 计算新的关卡（根据配置阈值升一关）
+    const newLevel = Math.floor(this.totalScore / SCORE_CONFIG.levelUpThreshold) + 1;
     
     // 检查是否进入新关卡
     if (newLevel > this.level) {
@@ -1405,4 +1414,9 @@ export default class TetrisGame {
     // 取消动画帧
     cancelAnimationFrame(this.aniId);
   }
+}
+
+// 将分数配置暴露给全局作用域，便于调试
+if (typeof GameGlobal !== 'undefined') {
+  GameGlobal.SCORE_CONFIG = SCORE_CONFIG;
 }

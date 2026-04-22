@@ -13,7 +13,17 @@ const AD_COLORS = {
  */
 export default class AdManager {
   constructor() {
-    const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    // 尝试获取窗口信息，如果失败（可能是隐私授权未通过）则使用默认值
+    let windowInfo;
+    try {
+      windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    } catch (error) {
+      console.warn('AdManager: 获取窗口信息失败，使用默认值:', error);
+      // 默认值，大部分手机屏幕尺寸
+      windowInfo = {
+        screenHeight: 667
+      };
+    }
     this.screenHeight = windowInfo.screenHeight;
     this.adHeight = Math.floor(this.screenHeight / 9); // 广告区域高度为屏幕高度的1/9
     this.adVisible = true; // 广告是否可见
