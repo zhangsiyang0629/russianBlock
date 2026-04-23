@@ -2,6 +2,7 @@ import './render'; // 初始化Canvas
 import TetrisGame from './tetris/game';
 import Cover from './cover';
 import EnergyManager from './tetris/energy';
+import RankPanel from './tetris/rank';
 import { getOrCreatePlayerData, updateUserInfo } from './tetris/playerData';
 
 const isDebugMode = false
@@ -14,7 +15,8 @@ export default class Main {
     this.ctx = null;
     this.cover = null;
     this.game = null;
-    this.currentState = 'cover'; // 'cover' 或 'game'
+    this.rankPanel = null;
+    this.currentState = 'cover';
     this.aniId = null;
     this.energyManager = new EnergyManager();
     this.playerData = null;
@@ -395,7 +397,17 @@ export default class Main {
     // 触摸事件
     wx.onTouchStart((e) => {
       const touch = e.touches[0];
-      this.handleTouch(touch.clientX, touch.clientY);
+      this.handleTouchStart(touch.clientX, touch.clientY);
+    });
+    
+    wx.onTouchMove((e) => {
+      const touch = e.touches[0];
+      this.handleTouchMove(touch.clientX, touch.clientY);
+    });
+    
+    wx.onTouchEnd((e) => {
+      const touch = e.changedTouches[0];
+      this.handleTouchEnd(touch.clientX, touch.clientY);
     });
     
     // 键盘事件（用于重新开始）
@@ -407,26 +419,68 @@ export default class Main {
       }
     });
   }
+  
+  handleTouchStart(x, y) {
+    if (this.currentState === 'rank' && this.rankPanel) {
+      this.rankPanel.handleTouchStart(x, y);
+    }
+    // 保持原有点击处理
+    if (this.currentState === 'cover' && this.cover) {
+      this._lastTapX = x;
+      this._lastTapY = y;
+      this._isTap = true;
+    }
+  }
+  
+  handleTouchMove(x, y) {
+    if (this.currentState === 'rank' && this.rankPanel) {
+      this.rankPanel.handleTouchMove(x, y);
+    }
+    if (this.currentState === 'cover') {
+      this._isTap = false;
+    }
+  }
+  
+  handleTouchEnd(x, y) {
+    if (this.currentState === 'rank' && this.rankPanel) {
+      this.rankPanel.handleTouchEnd(x, y);
+      return;
+    }
+    // 处理封面点击（仅当是点击操作而非滑动）
+    if (this.currentState === 'cover' && this.cover && this._isTap) {
+      this.handleTouch(this._lastTapX, this._lastTapY);
+    }
+    // 处理游戏触摸
+    if (this.currentState === 'game' && this.game) {
+      this.handleTouch(x, y);
+    }
+  }
 
   /**
    * 处理触摸输入
    */
   handleTouch(x, y) {
+    if (this.currentState === 'rank' && this.rankPanel) {
+      this.rankPanel.handleTouchEnd(x, y);
+      return;
+    }
+
     if (this.currentState === 'cover' && this.cover) {
       const clickedId = this.cover.handleClick(x, y);
       console.log('handleTouch clickedId:', clickedId);
       
       if (clickedId === 'play' || clickedId === 'playNav') {
         this.startGame();
-      } else if (clickedId === 'scores' || clickedId === 'scoresNav') {
-        console.log('打开分数页面');
-        // 待实现
+      } else if (clickedId === 'scoresNav') {
+        this.handleRankEntry('score');
+      } else if (clickedId === 'levelsNav') {
+        this.handleRankEntry('level');
+      } else if (clickedId === 'scores') {
+        this.handleRankEntry('score');
       } else if (clickedId === 'shop') {
         console.log('打开商店页面');
-        // 待实现
       } else if (clickedId === 'settingsNav') {
         console.log('打开设置页面');
-        // 待实现
       } 
     } else if (this.currentState === 'game' && this.game) {
       this.game.handleTouch(x, y);
@@ -556,10 +610,16 @@ export default class Main {
     }
     
     // 如果当前状态是游戏，并且游戏有自己的循环，我们不需要运行主循环
-    // 但是为了保持循环结构，我们仍然运行但跳过渲染
     if (this.currentState === 'game') {
-      // 游戏状态下，游戏有自己的循环，我们只需要保持主循环运行但不渲染
-      // 继续循环（但频率可以降低以节省资源）
+      this.aniId = requestAnimationFrame(this.mainLoop.bind(this));
+      return;
+    }
+    
+    // 排行榜面板有独立的渲染循环
+    if (this.currentState === 'rank') {
+      if (this.rankPanel) {
+        this.rankPanel.render();
+      }
       this.aniId = requestAnimationFrame(this.mainLoop.bind(this));
       return;
     }
@@ -596,6 +656,114 @@ export default class Main {
       cancelAnimationFrame(this.aniId);
       this.aniId = null;
     }
+  }
+  
+  /**
+   * 处理排行榜入口点击（含授权流程）
+   * @param {'score'|'level'} tab
+   */
+  async handleRankEntry(tab) {
+    console.log(`打开排行榜: ${tab}`);
+    
+    // 1. 检查隐私授权
+    const privacyOk = await this.ensurePrivacyAuthorized();
+    if (!privacyOk) {
+      console.warn('隐私授权检查失败，仍继续打开排行榜');
+    }
+    
+    // 2. 尝试获取用户信息（不阻塞）
+    if (!this.userInfoBound && typeof wx !== 'undefined' && !isDebugMode) {
+      this.tryBindUserInfo();
+    }
+    
+    // 3. 加载玩家数据
+    try {
+      if (!this.playerData) {
+        this.playerData = await getOrCreatePlayerData();
+      }
+    } catch (err) {
+      console.warn('加载玩家数据失败:', err);
+    }
+    
+    // 4. 打开排行榜
+    this.openRankPanel(tab);
+  }
+  
+  /**
+   * 确保隐私已授权
+   * @returns {Promise<boolean>}
+   */
+  ensurePrivacyAuthorized() {
+    return new Promise((resolve) => {
+      if (typeof wx === 'undefined' || !wx.getPrivacySetting || isDebugMode) {
+        resolve(true);
+        return;
+      }
+      
+      wx.getPrivacySetting({
+        success: (res) => {
+          if (res.needAuthorization) {
+            // 需要授权，触发隐私弹窗
+            wx.requirePrivacyAuthorize({
+              success: () => {
+                this.privacyAgreed = true;
+                if (this.cover && this.cover.setPrivacyAgreed) {
+                  this.cover.setPrivacyAgreed(true);
+                }
+                resolve(true);
+              },
+              fail: () => {
+                console.warn('用户拒绝隐私授权');
+                resolve(false);
+              }
+            });
+          } else {
+            resolve(true);
+          }
+        },
+        fail: () => {
+          resolve(true);
+        }
+      });
+    });
+  }
+  
+  /**
+   * 打开排行榜面板
+   */
+  async openRankPanel(tab) {
+    if (!this.rankPanel) {
+      this.rankPanel = new RankPanel(this.ctx, this.playerData, () => {
+        this.closeRankPanel();
+      });
+    }
+    
+    await this.rankPanel.show(tab);
+    
+    this.currentState = 'rank';
+    
+    // 隐藏封面
+    if (this.cover) {
+      this.cover.hide();
+    }
+  }
+  
+  /**
+   * 关闭排行榜面板
+   */
+  closeRankPanel() {
+    if (this.rankPanel) {
+      this.rankPanel.hide();
+      this.rankPanel = null;
+    }
+    
+    // 恢复封面
+    if (this.cover) {
+      this.cover.show();
+    }
+    
+    this.currentState = 'cover';
+    this.startMainLoop();
   }
   
   /**

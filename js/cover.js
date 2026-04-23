@@ -22,6 +22,7 @@ export default class Cover {
     // 底部导航
     this.navItems = [
       { id: 'scoresNav', icon: '📊', text: 'Scores', active: true },
+      { id: 'levelsNav', icon: '🎯', text: 'Levels', active: true },
       { id: 'settingsNav', icon: '⚙', text: 'Settings', active: false }
     ];
     

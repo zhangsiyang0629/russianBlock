@@ -216,21 +216,65 @@ async function updatePlayerData(updateFields) {
 
 async function saveOnLevelComplete(level, score, oldHighScore) {
   const newHighScore = Math.max(score, oldHighScore || 0);
-  return updatePlayerData({
+  const result = await updatePlayerData({
     level: level,
     highScore: newHighScore
   });
+  syncRanking({ level, highScore: newHighScore });
+  return result;
 }
 
 async function saveOnGameOver(score, oldHighScore) {
   const newHighScore = Math.max(score, oldHighScore || 0);
-  return updatePlayerData({
+  const result = await updatePlayerData({
     highScore: newHighScore
   });
+  syncRanking({ highScore: newHighScore });
+  return result;
 }
 
 async function updateUserInfo(nickname, avatarUrl) {
-  return updatePlayerData({ nickname, avatarUrl });
+  const result = await updatePlayerData({ nickname, avatarUrl });
+  syncRanking({ nickname, avatarUrl });
+  return result;
+}
+
+/**
+ * 同步玩家数据到排行榜表
+ * @param {Object} fields - 需要同步的字段
+ */
+async function syncRanking(fields = {}) {
+  try {
+    const playerData = await getOrCreatePlayerData();
+    if (!playerData) return;
+    
+    const rankingData = {
+      nickname: playerData.nickname,
+      avatarUrl: playerData.avatarUrl,
+      highScore: fields.highScore !== undefined ? fields.highScore : playerData.highScore,
+      level: fields.level !== undefined ? fields.level : playerData.level,
+    };
+    
+    if (typeof wx !== 'undefined' && wx.cloud) {
+      const db = wx.cloud.database();
+      const existRes = await db.collection('rankings')
+        .where({ _openid: '{openid}' })
+        .get();
+      if (existRes.data.length > 0) {
+        await db.collection('rankings').doc(existRes.data[0]._id).update({
+          data: { ...rankingData, updateTime: db.serverDate() }
+        });
+      } else {
+        await db.collection('rankings').add({
+          data: { ...rankingData, updateTime: db.serverDate() }
+        });
+      }
+    } else {
+      console.log('模拟模式: 同步排行榜数据', rankingData);
+    }
+  } catch (err) {
+    console.warn('同步排行榜数据失败:', err);
+  }
 }
 
 export {

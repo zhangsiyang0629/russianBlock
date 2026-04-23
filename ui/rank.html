@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;family=Be+Vietnam+Pro:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed-variant": "#6f4f39",
+                    "secondary-fixed-dim": "#a3e1ca",
+                    "on-tertiary-fixed": "#4f341f",
+                    "primary": "#993d46",
+                    "surface-container-highest": "#e4ddc5",
+                    "surface": "#fdf6e3",
+                    "on-secondary": "#c5ffe9",
+                    "surface-variant": "#e4ddc5",
+                    "surface-dim": "#dcd4bb",
+                    "surface-container-high": "#eae2cb",
+                    "surface-container-lowest": "#ffffff",
+                    "error-container": "#f95630",
+                    "outline-variant": "#b2ad9c",
+                    "inverse-surface": "#100e05",
+                    "inverse-on-surface": "#a29d8c",
+                    "primary-fixed-dim": "#ef7f87",
+                    "on-primary-container": "#5e0f1c",
+                    "inverse-primary": "#ff8c94",
+                    "surface-tint": "#993d46",
+                    "surface-container": "#efe8d2",
+                    "on-tertiary": "#fff0e8",
+                    "surface-bright": "#fdf6e3",
+                    "tertiary-fixed": "#fdd1b4",
+                    "secondary": "#296654",
+                    "on-surface": "#322f22",
+                    "secondary-container": "#b1efd8",
+                    "primary-dim": "#8a313b",
+                    "on-error-container": "#520c00",
+                    "tertiary": "#75553e",
+                    "on-primary": "#ffefef",
+                    "error-dim": "#b92902",
+                    "on-error": "#ffefec",
+                    "tertiary-fixed-dim": "#eec4a7",
+                    "on-secondary-fixed": "#004938",
+                    "primary-container": "#ff8c94",
+                    "on-secondary-fixed-variant": "#296654",
+                    "tertiary-dim": "#684933",
+                    "surface-container-low": "#f8f0dc",
+                    "outline": "#7b7767",
+                    "on-tertiary-container": "#644630",
+                    "secondary-fixed": "#b1efd8",
+                    "primary-fixed": "#ff8c94",
+                    "secondary-dim": "#1b5948",
+                    "error": "#b02500",
+                    "on-surface-variant": "#5f5b4d",
+                    "on-background": "#322f22",
+                    "on-primary-fixed": "#330008",
+                    "on-primary-fixed-variant": "#6a1824",
+                    "on-secondary-container": "#1d5c4a",
+                    "background": "#fdf6e3",
+                    "tertiary-container": "#fdd1b4"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "display": ["Plus Jakarta Sans"],
+                    "body": ["Be Vietnam Pro"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>.sketch-border {
+    border: 3px solid #322f22;
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px
+    }
+.crayon-fill-primary {
+    background-image: linear-gradient(135deg, rgba(153, 61, 70, 0.1) 25%, transparent 25%), linear-gradient(225deg, rgba(153, 61, 70, 0.1) 25%, transparent 25%), linear-gradient(45deg, rgba(153, 61, 70, 0.1) 25%, transparent 25%), linear-gradient(315deg, rgba(153, 61, 70, 0.1) 25%, transparent 25%);
+    background-position: 4px 0, 4px 0, 0 0, 0 0;
+    background-size: 8px 8px;
+    background-repeat: repeat
+    }
+.paper-texture {
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuBziZza160JT_nsdz6OkdEysOIlqxqtYprePAVc2hOK5mfXcZ3ipNWQ4FQE6YOpbbhLXZkBZ1XxgpG8x9Ws2ee0yVkaJ4nM84cjEddQv8X_Hn-ZccpAMQDhcCHwMHj1X2pulhzNl2Qq5RpV5BAN1nNhUbNs_krribSaQ6g7TR8q5lUg6Pw3jCmho03LuRS8UWzVOPH9SwsVDcOsPdIe8t7hBAuGOoqBaD2QbYb_upwtGz5EYXpWIxUTdQlKB8MPCZtzHH8Kv8zHacrl);
+    background-repeat: repeat
+    }
+.sketchy-circle {
+    border-radius: 50% 45% 52% 48%/48% 52% 45% 50%;
+    border: 2px solid #322f22
+    }
+.tetris-block-s {
+    width: 40px;
+    height: 30px;
+    border: 3px solid #322f22;
+    background: #b1efd8;
+    transform: rotate(5deg)
+    }
+.tetris-block-l {
+    width: 30px;
+    height: 50px;
+    border: 3px solid #322f22;
+    background: #fdd1b4;
+    transform: rotate(-8deg)
+    }
+.tetris-block-t {
+    width: 45px;
+    height: 30px;
+    border: 3px solid #322f22;
+    background: #ff8c94;
+    transform: rotate(12deg)
+    }</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-body paper-texture min-h-screen pb-48">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full sticky top-0 z-50 bg-[#fdfbf7] dark:bg-[#1a1a1a] px-4 py-2 shadow-[4px_4px_0px_0px_rgba(50,47,34,0.1)]">
+<button class="flex items-center justify-center w-10 h-10 hover:rotate-1 hover:scale-105 transition-transform active:rotate-[-2deg] active:scale-95">
+<span class="material-symbols-outlined text-[#322f22] dark:text-[#fdfbf7]">arrow_back</span>
+</button>
+<h1 class="font-['Plus_Jakarta_Sans'] font-bold tracking-widest uppercase text-[#FFB347] dark:text-[#ffca85]">High Scores</h1>
+<div class="w-10"></div>
+</header>
+<main class="max-w-md mx-auto px-6 pt-8 relative">
+<!-- Decorative Blocks -->
+<div class="absolute -left-4 top-12 tetris-block-s opacity-40"></div>
+<div class="absolute -right-2 top-40 tetris-block-l opacity-40"></div>
+<div class="absolute left-8 bottom-0 tetris-block-t opacity-40"></div>
+<!-- Hero Score Card -->
+<section class="relative mb-10 rotate-[-1deg]">
+<div class="bg-surface-container-high sketch-border p-6 shadow-[6px_6px_0px_0px_rgba(50,47,34,0.1)]">
+<div class="flex flex-col items-center">
+<span class="font-label text-on-surface-variant tracking-widest text-sm font-bold uppercase mb-1">Current Legend</span>
+<div class="w-24 h-24 sketchy-circle overflow-hidden mb-4 bg-secondary-container flex items-center justify-center">
+<img class="w-full h-full object-cover mix-blend-multiply opacity-80" data-alt="hand-drawn style stylized portrait of a smiling woman with glasses, warm artist journal aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuChIkvGJ9fr3ppVKqXBvRC7KBWNJSV0b7yastKWIpyQdeLTpoqFF04Hoa1Wdt6kGQ7ycEx7x-iOsA-59fQWjWIPN6n-wp0qE-DC-KK1gQp6-W3KqNjnfOvvZdoMoMLqZdPNgXtgmGo8V3ENIPsa3zlm99PxKlKOuKmE50Drl9RqQFt6Ew1LABpwLhcY1dmmmdJE4uzzta73AvVXGs0-Ekm5Ib9biJA-008Q7n2wSUwlM9twO29Ba2Ffstj2DAsGrBiI6lCc21hPJDQS"/>
+</div>
+<h2 class="font-headline text-2xl font-black tracking-tight text-on-surface">IVAN THE GREAT</h2>
+<p class="font-display text-5xl font-extrabold text-primary mt-2">124,540</p>
+</div>
+</div>
+</section>
+<!-- Leaderboard List -->
+<div class="space-y-4">
+<!-- Rank 2 -->
+<div class="bg-surface-container-low sketch-border p-4 flex items-center justify-between rotate-[0.5deg] hover:rotate-0 transition-transform cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-8 font-headline font-black text-xl text-outline italic">#2</div>
+<div class="w-12 h-12 sketchy-circle bg-tertiary-container flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover grayscale opacity-70" data-alt="charcoal sketch style portrait of a man, warm paper background, organic lines" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYtuJ-RLkwVJwT6CCz0CosF9CeMVYyONQHGLq2vGbf1H5geqbIaUv6l7Uy77X3P7pF3nGdsSyzfEMbc9IH0pvFtbqS7_WL2jtCNsBDHiXha-N_VxgEy87iluL4lltyxGGEsmlEC9E5tleFwltr3IIGQQbhbE3zTaqGCfjyKIopzzXbr3M1KRzC42GvUXw2gP_LjyBW64ox2YQpWpGhI5FiUtygiu7XeUhkFNbtCPkAgZhhfR-wkCc_MsW7_w9hjBiKbmtN6nrqEd4X"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Tetris King</p>
+<p class="font-label text-xs text-on-surface-variant uppercase tracking-tighter">Level 42</p>
+</div>
+</div>
+<p class="font-display font-extrabold text-lg text-secondary">98,210</p>
+</div>
+<!-- Rank 3 -->
+<div class="bg-surface-container-low sketch-border p-4 flex items-center justify-between rotate-[-0.8deg] hover:rotate-0 transition-transform cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-8 font-headline font-black text-xl text-outline italic">#3</div>
+<div class="w-12 h-12 sketchy-circle bg-primary-container flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover grayscale opacity-70" data-alt="minimal pencil sketch portrait of a woman, artistic paper texture overlay, warm tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9sX1qRueiMHI2iNForZRvPgKa8FkpA6pG6PCWTu-zGeZstY_7HNyET6iWQ-EMpZUKTgWPVwO7YJ9Ml2OjsXSezKCy8-99-a69DeaH_nUgWCY_pJd9n23mX9xJcQzAY5THX7WhtKS5_EkNNXuHG7tkPIUAUIBllsMyMrAeYMc6rPI3E-OU0stct0jaX66UCf58XmMMRYB1-TOuNBS9g7G2M0vVFW55UQ0EfhQU-rLxQsDoPoWtBCWlpouPSggZngnH_y2l8oUc0-KZ"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Block Master</p>
+<p class="font-label text-xs text-on-surface-variant uppercase tracking-tighter">Level 38</p>
+</div>
+</div>
+<p class="font-display font-extrabold text-lg text-secondary">85,600</p>
+</div>
+<!-- Rank 4 -->
+<div class="bg-surface-container-low sketch-border p-4 flex items-center justify-between rotate-[1.2deg] hover:rotate-0 transition-transform cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-8 font-headline font-black text-xl text-outline italic">#4</div>
+<div class="w-12 h-12 sketchy-circle bg-secondary-container flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover grayscale opacity-70" data-alt="rough ink sketch portrait of a smiling person, sketchbook aesthetic, tactile paper grain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuALneje5IdAONuP_EHMi_348FcjXEp2A5LzXyH7Ig-LLRanNBMK-5c270JrLMXzXsSzp7dADCGl7PLcjqAeN8WkreB0CWADSv4xU4usg4yxdfKJAHo-EgsODg_s-kJjUSWGI1NeqDYA0NaS-NY9kPQu2inWlx9nl-XQr9zSFBj30e1nynWavXUrr64pbtvAfwdouQG8Mtyf3WWLkeH-gw38PETlqJpTD9nNcI76Q_edPDxn7rWWN9qhMj4w05iNpqiJOqkzVy8frNdU"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Neon Painter</p>
+<p class="font-label text-xs text-on-surface-variant uppercase tracking-tighter">Level 35</p>
+</div>
+</div>
+<p class="font-display font-extrabold text-lg text-secondary">72,110</p>
+</div>
+<!-- Rank 5 -->
+<div class="bg-surface-container-low sketch-border p-4 flex items-center justify-between rotate-[-0.5deg] hover:rotate-0 transition-transform cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-8 font-headline font-black text-xl text-outline italic">#5</div>
+<div class="w-12 h-12 sketchy-circle bg-on-tertiary-fixed-variant flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-surface text-2xl">person</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Ghost Layer</p>
+<p class="font-label text-xs text-on-surface-variant uppercase tracking-tighter">Level 31</p>
+</div>
+</div>
+<p class="font-display font-extrabold text-lg text-secondary">68,440</p>
+</div>
+</div>
+<!-- Personal Rank CTA -->
+<div class="mt-12 text-center">
+<button class="bg-primary text-on-primary font-headline font-black text-lg py-4 px-10 sketch-border shadow-[4px_4px_0px_0px_rgba(153,61,70,0.3)] hover:scale-105 active:scale-95 transition-all">
+                CHALLENGE SCORE
+            </button>
+</div>
+</main>
+<!-- Sticky Current Player Score -->
+<div class="fixed bottom-[104px] left-1/2 -translate-x-1/2 w-full max-w-md px-6 z-40">
+<div class="bg-surface-container-highest sketch-border p-3 flex items-center justify-between shadow-[0_-4px_10px_rgba(50,47,34,0.1)] border-primary/20 bg-opacity-95 backdrop-blur-sm">
+<div class="flex items-center gap-4">
+<div class="text-center">
+<p class="font-headline font-black text-xs text-primary leading-tight">未上榜</p>
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-tighter">Rank</p>
+</div>
+<div class="w-10 h-10 sketchy-circle bg-outline-variant flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-surface text-xl">account_circle</span>
+</div>
+<div>
+<p class="font-headline font-bold text-sm text-on-surface">You</p>
+<p class="font-label text-[10px] text-on-surface-variant uppercase tracking-tighter">Level 12</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-display font-extrabold text-lg text-primary">12,400</p>
+</div>
+</div>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-6 pb-6 pt-3 bg-[#fdfbf7] dark:bg-[#1a1a1a] rounded-t-[2rem] border-t-4 border-[#322f22] dark:border-[#fdfbf7] shadow-[0_-4px_0px_0px_rgba(50,47,34,0.05)]">
+<a class="flex flex-col items-center justify-center text-[#322f22] dark:text-[#fdfbf7] opacity-70 hover:bg-[#f5f0e6] dark:hover:bg-[#333] transition-colors p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined">videogame_asset</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[10px] font-bold uppercase tracking-tighter">Play</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#FFB347] text-[#fdfbf7] rounded-full px-5 py-1 rotate-[-1deg] transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">leaderboard</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[10px] font-bold uppercase tracking-tighter">Scores</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#322f22] dark:text-[#fdfbf7] opacity-70 hover:bg-[#f5f0e6] dark:hover:bg-[#333] transition-colors p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[10px] font-bold uppercase tracking-tighter">Settings</span>
+</a>
+</nav>
+</body></html>
