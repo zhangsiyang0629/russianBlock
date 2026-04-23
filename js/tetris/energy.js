@@ -1,4 +1,6 @@
 // 体力系统管理器
+import { updatePlayerData } from './playerData.js';
+
 export default class EnergyManager {
   constructor() {
     // 体力上限
@@ -10,6 +12,37 @@ export default class EnergyManager {
     
     // 初始化体力数据
     this.initEnergyData();
+  }
+  
+  /**
+   * 从云数据更新体力数据（用于跨设备同步）
+   * @param {Object} cloudData - 云数据库中的体力数据
+   */
+  updateFromCloudData(cloudData) {
+    if (!cloudData) return;
+    
+    const cloudEnergy = cloudData.energy;
+    const cloudUpdateTime = cloudData.energyUpdateTime || cloudData.lastUpdateTime;
+    const cloudLastDate = cloudData.lastDate;
+    
+    // 如果云数据缺少必要字段，跳过
+    if (cloudEnergy === undefined || cloudUpdateTime === undefined) {
+      return;
+    }
+    
+    // 比较时间戳，选择最新的数据
+    if (cloudUpdateTime > this.lastUpdateTime) {
+      console.log('使用云数据库体力数据（更新）');
+      this.energy = cloudEnergy;
+      this.lastUpdateTime = cloudUpdateTime;
+      this.lastDate = cloudLastDate || this.getCurrentDate();
+      // 保存到本地存储
+      this.saveEnergyData();
+    } else if (cloudUpdateTime < this.lastUpdateTime) {
+      console.log('本地体力数据更新，同步到云数据库');
+      // 本地数据更新，云数据库会在saveEnergyData中同步
+    }
+    // 如果时间戳相等，无需操作
   }
   
   /**
@@ -196,8 +229,26 @@ export default class EnergyManager {
         lastDate: this.lastDate
       };
       wx.setStorageSync('energyData', energyData);
+      
+      // 同步到云数据库
+      this.syncToCloud();
     } catch (error) {
       console.error('保存体力数据失败:', error);
+    }
+  }
+  
+  /**
+   * 同步体力数据到云数据库
+   */
+  async syncToCloud() {
+    try {
+      await updatePlayerData({
+        energy: this.energy,
+        energyUpdateTime: this.lastUpdateTime,
+        lastDate: this.lastDate
+      });
+    } catch (error) {
+      console.warn('同步体力数据到云数据库失败:', error);
     }
   }
   

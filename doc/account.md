@@ -17,6 +17,8 @@
 | `avatarUrl` | String | 是 | 玩家头像URL。若用户授权，使用其微信头像；若未授权，使用预设的默认头像。 |
 | `highScore` | Number | 是 | 玩家历史最高分，初始值为 `0`。 |
 | `level` | Number | 是 | 玩家当前达到的最高关卡数，初始值为 `1`。 |
+| `energy` | Number | 是 | 玩家体力 |
+| `energyRecoverTime` | Number | 是 | 玩家体力恢复时间，恢复时间包括按时间恢复与每日重置的恢复 |
 | `updateTime` | Date | 是 | 记录最后更新时间，每次更新分数、关卡或信息时自动更新为当前时间。 |
 
 ## 未授权用户默认值生成规则

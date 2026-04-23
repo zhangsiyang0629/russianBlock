@@ -32,6 +32,12 @@ export default class Main {
     this.userInfoBound = savedUserInfoBound;
     this.userInfoButton = null; // wx.createUserInfoButton 实例
     
+    // 防重复点击标志
+    this.isStartingGame = false;
+    
+    // 主循环停止标志
+    this.mainLoopStopped = false;
+    
     // 等待Canvas准备就绪
     setTimeout(() => {
       this.init();
@@ -53,6 +59,9 @@ export default class Main {
       // 处理隐私协议相关操作
       this.handleCoverPrivacyAction(action, data);
     });
+    
+    // 从云数据库同步体力数据
+    this.syncEnergyFromCloud();
     
     // 初始化检查用户隐私授权状态
     this.initPrivacyStatusCheck();
@@ -430,12 +439,28 @@ export default class Main {
     async startGame() {
       console.log('开始游戏');
       
+      // 额外保护：如果已经是游戏状态，直接返回
+      if (this.currentState === 'game') {
+        console.log('游戏已在运行中');
+        return;
+      }
+      
+      // 防重复点击：如果正在启动游戏，直接返回
+      if (this.isStartingGame) {
+        console.log('游戏正在启动中，请勿重复点击');
+        return;
+      }
+      
+      // 标记游戏正在启动
+      this.isStartingGame = true;
+      
        // 根据文档，Play按钮直接开始游戏，无任何前置授权检查
        // 隐私授权通过勾选框触发，不在此处处理
-    
+     
     // 检查体力
     if (!this.energyManager.hasEnoughEnergy()) {
       console.warn('体力不足，无法开始游戏');
+      this.isStartingGame = false; // 重置标志
       // TODO: 显示UI提示
       return;
     }
@@ -443,6 +468,7 @@ export default class Main {
     // 消耗体力
     if (!this.energyManager.consumeEnergy()) {
       console.error('消耗体力失败');
+      this.isStartingGame = false; // 重置标志
       return;
     }
     
@@ -473,17 +499,26 @@ export default class Main {
     // 停止主循环（封面渲染）
     this.stopMainLoop();
     
-    // 创建游戏实例
-    if (!this.game) {
-      this.game = new TetrisGame(this.ctx, this.savedLevel, this.savedHighScore);
-      this.game.start();
-    } else {
-      this.game.restart(this.savedLevel, this.savedHighScore);
-      this.game.start();
+    try {
+      // 创建游戏实例
+      if (!this.game) {
+        this.game = new TetrisGame(this.ctx, this.savedLevel, this.savedHighScore);
+        this.game.start();
+      } else {
+        this.game.restart(this.savedLevel, this.savedHighScore);
+        this.game.start();
+      }
+      
+      // 切换状态
+      this.currentState = 'game';
+    } catch (error) {
+      console.error('启动游戏失败:', error);
+      // 如果游戏启动失败，返回封面
+      this.returnToCover();
+    } finally {
+      // 重置启动标志
+      this.isStartingGame = false;
     }
-    
-    // 切换状态
-    this.currentState = 'game';
   }
 
   /**
@@ -514,18 +549,27 @@ export default class Main {
    * 主循环
    */
   mainLoop() {
+    // 检查是否应该停止主循环
+    if (this.mainLoopStopped) {
+      this.aniId = null;
+      return;
+    }
+    
+    // 如果当前状态是游戏，并且游戏有自己的循环，我们不需要运行主循环
+    // 但是为了保持循环结构，我们仍然运行但跳过渲染
+    if (this.currentState === 'game') {
+      // 游戏状态下，游戏有自己的循环，我们只需要保持主循环运行但不渲染
+      // 继续循环（但频率可以降低以节省资源）
+      this.aniId = requestAnimationFrame(this.mainLoop.bind(this));
+      return;
+    }
+    
     // 清空画布
     this.ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // 根据当前状态渲染
     if (this.currentState === 'cover' && this.cover) {
       this.cover.render();
-    } else if (this.currentState === 'game' && this.game) {
-      // 游戏有自己的循环，我们不需要额外渲染
-      // 但为了确保游戏渲染，我们调用游戏的render方法
-      // 注意：游戏循环在TetrisGame内部运行，所以这里可能不需要
-      // 我们只是作为备份渲染
-      this.game.render();
     }
     
     // 继续循环
@@ -536,6 +580,7 @@ export default class Main {
    * 启动主循环
    */
   startMainLoop() {
+    this.mainLoopStopped = false;
     if (this.aniId) {
       cancelAnimationFrame(this.aniId);
     }
@@ -546,9 +591,24 @@ export default class Main {
    * 停止主循环
    */
   stopMainLoop() {
+    this.mainLoopStopped = true;
     if (this.aniId) {
       cancelAnimationFrame(this.aniId);
       this.aniId = null;
+    }
+  }
+  
+  /**
+   * 从云数据库同步体力数据
+   */
+  async syncEnergyFromCloud() {
+    try {
+      const playerData = await getOrCreatePlayerData();
+      if (playerData) {
+        this.energyManager.updateFromCloudData(playerData);
+      }
+    } catch (err) {
+      console.warn('从云数据库同步体力数据失败:', err);
     }
   }
 }

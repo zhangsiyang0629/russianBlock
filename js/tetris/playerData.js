@@ -43,6 +43,44 @@ function getDefaultAvatar() {
   return 'images/default-avatar.png';
 }
 
+/**
+ * 确保玩家数据包含体力字段（用于向后兼容）
+ */
+async function ensureEnergyFields(db, playerData) {
+  const needsUpdate = {};
+  const now = Date.now();
+  const today = new Date().toISOString().split('T')[0];
+  
+  // 检查energy字段
+  if (playerData.energy === undefined) {
+    needsUpdate.energy = 30;
+  }
+  
+  // 检查energyUpdateTime字段
+  if (playerData.energyUpdateTime === undefined) {
+    needsUpdate.energyUpdateTime = now;
+  }
+  
+  // 检查lastDate字段
+  if (playerData.lastDate === undefined) {
+    needsUpdate.lastDate = today;
+  }
+  
+  // 如果有字段需要更新，则更新云数据库
+  if (Object.keys(needsUpdate).length > 0) {
+    try {
+      await db.collection('player_data').doc(playerData._id).update({
+        data: needsUpdate
+      });
+      console.log('更新缺失的体力字段:', needsUpdate);
+      // 同时更新本地对象
+      Object.assign(playerData, needsUpdate);
+    } catch (err) {
+      console.error('更新体力字段失败:', err);
+    }
+  }
+}
+
 async function getOrCreatePlayerData() {
   if (initCloud()) {
     try {
@@ -60,9 +98,12 @@ async function getOrCreatePlayerData() {
       }).get();
       console.log('使用openid查询结果:', result.data.length, '条数据', openid);
       
-      if (result.data.length > 0) {
-        return result.data[0];
-      }
+       if (result.data.length > 0) {
+         const playerData = result.data[0];
+         // 检查并修复缺失的体力字段
+         await ensureEnergyFields(db, playerData);
+         return playerData;
+       }
       
       // 创建新用户数据
       const defaultData = {
@@ -70,6 +111,9 @@ async function getOrCreatePlayerData() {
         avatarUrl: getDefaultAvatar(),
         highScore: 0,
         level: 1,
+        energy: 30,
+        energyUpdateTime: Date.now(),
+        lastDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
         updateTime: db.serverDate()
       };
       await db.collection('player_data').add({ data: defaultData });
@@ -95,13 +139,16 @@ function getLocalPlayerData() {
   } catch (err) {
     console.error('读取本地玩家数据失败:', err);
   }
-  const defaultData = {
-    nickname: getDefaultNickname(),
-    avatarUrl: getDefaultAvatar(),
-    highScore: 0,
-    level: 1,
-    updateTime: new Date().toISOString()
-  };
+   const defaultData = {
+     nickname: getDefaultNickname(),
+     avatarUrl: getDefaultAvatar(),
+     highScore: 0,
+     level: 1,
+     energy: 30,
+     energyUpdateTime: Date.now(),
+     lastDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+     updateTime: new Date().toISOString()
+   };
   saveLocalPlayerData(defaultData);
   return defaultData;
 }
@@ -147,6 +194,9 @@ async function updatePlayerData(updateFields) {
           avatarUrl: getDefaultAvatar(),
           highScore: 0,
           level: 1,
+          energy: 30,
+          energyUpdateTime: Date.now(),
+          lastDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
           ...updateFields, // 合并传入的更新字段
           updateTime: db.serverDate()
         };
