@@ -46,6 +46,20 @@ function getDefaultAvatar() {
   return 'subpackages/images/mike.png';
 }
 
+function createDefaultPlayerData(overrides = {}, serverDate = null) {
+  return {
+    nickname: getDefaultNickname(),
+    avatarUrl: getDefaultAvatar(),
+    highScore: 0,
+    level: 1,
+    energy: 30,
+    energyUpdateTime: Date.now(),
+    lastDate: new Date().toISOString().split('T')[0],
+    ...overrides,
+    updateTime: serverDate || new Date().toISOString(),
+  };
+}
+
 /**
  * 确保玩家数据包含体力字段（用于向后兼容）
  */
@@ -101,16 +115,7 @@ async function getOrCreatePlayerData() {
         return playerData;
       }
       
-      const defaultData = {
-        nickname: getDefaultNickname(),
-        avatarUrl: getDefaultAvatar(),
-        highScore: 0,
-        level: 1,
-        energy: 30,
-        energyUpdateTime: Date.now(),
-        lastDate: new Date().toISOString().split('T')[0],
-        updateTime: db.serverDate()
-      };
+      const defaultData = createDefaultPlayerData({}, db.serverDate());
       await db.collection('player_data').add({ data: defaultData });
       
       return { ...defaultData, _id: null };
@@ -130,16 +135,7 @@ function getLocalPlayerData() {
   } catch (err) {
     console.error('读取本地玩家数据失败:', err);
   }
-   const defaultData = {
-     nickname: getDefaultNickname(),
-     avatarUrl: getDefaultAvatar(),
-     highScore: 0,
-     level: 1,
-     energy: 30,
-     energyUpdateTime: Date.now(),
-     lastDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-     updateTime: new Date().toISOString()
-   };
+   const defaultData = createDefaultPlayerData();
   saveLocalPlayerData(defaultData);
   return defaultData;
 }
@@ -173,17 +169,7 @@ async function updatePlayerData(updateFields) {
         });
         return true;
       } else {
-        const defaultData = {
-          nickname: getDefaultNickname(),
-          avatarUrl: getDefaultAvatar(),
-          highScore: 0,
-          level: 1,
-          energy: 30,
-          energyUpdateTime: Date.now(),
-          lastDate: new Date().toISOString().split('T')[0],
-          ...updateFields,
-          updateTime: db.serverDate()
-        };
+        const defaultData = createDefaultPlayerData(updateFields, db.serverDate());
         await db.collection('player_data').add({ data: defaultData });
         return true;
       }

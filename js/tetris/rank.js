@@ -27,6 +27,8 @@ const COLORS = {
   secondaryFixedDim: '#a3e1ca',
 };
 
+import { drawRoundedRect } from './utils.js';
+
 const ITEMS_PER_PAGE = 10;
 const MAX_RANK = 3000;
 const TAB_HEIGHT = 44;
@@ -58,8 +60,6 @@ export default class RankPanel {
     this.maxScrollOffset = 0;
     this.touchStartY = 0;
     this.touchStartScroll = 0;
-    this.myRankData = null;
-
     this.showingSettings = false;
     this.settings = { musicOn: true, musicVolume: 0.5, sfxOn: true, sfxVolume: 0.5 };
     this._settingsHitAreas = {};
@@ -133,7 +133,6 @@ export default class RankPanel {
     this.showingSettings = false;
     this.isLoading = true;
     this.scrollOffset = 0;
-    this.myRankData = null;
     this.avatarImages = {};
 
     await this.loadPage();
@@ -315,7 +314,6 @@ export default class RankPanel {
     this.hasMore = true;
     this.isLoading = true;
     this.scrollOffset = 0;
-    this.myRankData = null;
     await this.loadPage();
   }
 
@@ -710,7 +708,7 @@ export default class RankPanel {
     ctx.fillStyle = '#fffcf5';
     ctx.strokeStyle = '#322f22';
     ctx.lineWidth = 4;
-    this.drawRoundedRect(ctx, dx, dy, dw, dh, 20);
+    drawRoundedRect(ctx, dx, dy, dw, dh, 20);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
@@ -745,7 +743,7 @@ export default class RankPanel {
 
     const drawToggle = (tx, ty, on, onColor) => {
       ctx.fillStyle = on ? onColor : '#b2ad9c';
-      this.drawRoundedRect(ctx, tx, ty, toggleW, toggleH, toggleH / 2);
+      drawRoundedRect(ctx, tx, ty, toggleW, toggleH, toggleH / 2);
       ctx.fill();
       const knobX = on ? tx + toggleW - 12 - 2 : tx + 2;
       ctx.fillStyle = '#ffffff';
@@ -761,12 +759,12 @@ export default class RankPanel {
       const barH = 6;
       const thumbR = 10;
       ctx.fillStyle = '#eae2cb';
-      this.drawRoundedRect(ctx, sx, sy + 10 - barH / 2, sw, barH, barH / 2);
+      drawRoundedRect(ctx, sx, sy + 10 - barH / 2, sw, barH, barH / 2);
       ctx.fill();
       ctx.fillStyle = color;
       const fillW = sw * val;
       if (fillW > barH) {
-        this.drawRoundedRect(ctx, sx, sy + 10 - barH / 2, fillW, barH, barH / 2);
+        drawRoundedRect(ctx, sx, sy + 10 - barH / 2, fillW, barH, barH / 2);
         ctx.fill();
       }
       ctx.fillStyle = color;
@@ -823,12 +821,12 @@ export default class RankPanel {
     ctx.rotate(-1 * Math.PI / 180);
     ctx.translate(-(btnX + btnW / 2), -(btnY + btnH / 2));
     ctx.fillStyle = '#322f22';
-    this.drawRoundedRect(ctx, btnX + 3, btnY + 3, btnW, btnH, btnH / 2);
+    drawRoundedRect(ctx, btnX + 3, btnY + 3, btnW, btnH, btnH / 2);
     ctx.fill();
     ctx.fillStyle = '#fdd1b4';
     ctx.strokeStyle = '#322f22';
     ctx.lineWidth = 3;
-    this.drawRoundedRect(ctx, btnX, btnY, btnW, btnH, btnH / 2);
+    drawRoundedRect(ctx, btnX, btnY, btnW, btnH, btnH / 2);
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = '#322f22';
@@ -913,20 +911,6 @@ export default class RankPanel {
     }
 
     return true;
-  }
-
-  drawRoundedRect(ctx, x, y, width, height, radius) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
   }
 
   findMyRank() {

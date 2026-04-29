@@ -96,18 +96,6 @@ export default class MusicManager {
     this.currentMusicNumber = -1;
   }
 
-  pause() {
-    if (this.audioContext) {
-      this.audioContext.pause();
-    }
-  }
-
-  resume() {
-    if (this.audioContext && this.musicOn) {
-      this.audioContext.play();
-    }
-  }
-
   setVolume(vol) {
     this.musicVolume = vol;
     if (this.audioContext) {

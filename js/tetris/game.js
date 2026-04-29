@@ -1,8 +1,11 @@
+const isDebugMode = false;
+
 import Grid from './grid.js';
 import Tetromino from './block.js';
 import AdManager from './ad.js';
 import PengfuAnimation from './animation.js';
 import { saveOnLevelComplete, saveOnGameOver } from './playerData.js';
+import { drawRoundedRect } from './utils.js';
 
 // 设计系统颜色（来自Google Stitch原型）
 const COLORS = {
@@ -110,23 +113,6 @@ const EFFECTS = {
 };
 
 /**
- * 绘制圆角矩形
- */
-function drawRoundedRect(ctx, x, y, width, height, radius) {
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height - radius);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  ctx.lineTo(x + radius, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
-}
-
-/**
  * 俄罗斯方块游戏主类
  */
 export default class TetrisGame {
@@ -186,24 +172,6 @@ export default class TetrisGame {
     // 暂停按钮
     this.pauseButton = { x: 0, y: 0, width: 0, height: 0 };
     this._gameOverButtons = [];
-    
-    // 重新开始弹窗状态
-    this.restartButton = {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-      visible: false
-    };
-    
-    // 复活按钮状态
-    this.reviveButton = {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-      visible: false
-    };
     
     // 复活状态
     this.reviveUsed = false; // 是否已使用过复活
@@ -639,12 +607,6 @@ export default class TetrisGame {
     wx.onKeyUp((res) => {
       this.keys[res.keyCode] = false;
     });
-    
-    // 触摸输入由Main类统一处理
-    // wx.onTouchStart((e) => {
-    //   const touch = e.touches[0];
-    //   this.handleTouch(touch.clientX, touch.clientY);
-    // });
   }
 
   /**
@@ -1280,9 +1242,6 @@ export default class TetrisGame {
       this.victoryButton.height = buttonHeight;
       this.victoryButton.visible = true;
       
-      // 隐藏其他弹窗按钮
-      this.restartButton.visible = false;
-      this.reviveButton.visible = false;
     }
     // 游戏结束弹窗
     else if (this.gameOver) {
@@ -1373,9 +1332,6 @@ export default class TetrisGame {
 
       this.victoryButton.visible = false;
     } else {
-      // 游戏未结束时隐藏所有弹窗按钮
-      this.restartButton.visible = false;
-      this.reviveButton.visible = false;
       this.victoryButton.visible = false;
     }
   }
@@ -1403,20 +1359,7 @@ export default class TetrisGame {
      this.showVictoryPopup = false;
      this.victoryButton.visible = false;
      
-     // 重置其他弹窗按钮状态
-     this.restartButton.visible = false;
-     this.restartButton.x = 0;
-     this.restartButton.y = 0;
-     this.restartButton.width = 0;
-     this.restartButton.height = 0;
-     
-     this.reviveButton.visible = false;
-     this.reviveButton.x = 0;
-     this.reviveButton.y = 0;
-     this.reviveButton.width = 0;
-     this.reviveButton.height = 0;
-     
-     // 重置复活状态
+      // 重置复活状态
      this.reviveUsed = false;
      
      // 注意：广告管理器不会被重置，广告会继续显示
@@ -1433,36 +1376,20 @@ export default class TetrisGame {
    * 重新开始游戏
    */
   restart(savedLevel, savedHighScore) {
-    this.grid = new Grid(this.cellSize);
+    this.level = savedLevel || this.level;
+    this.updateLevelConfig();
     this.currentBlock = null;
     this.nextBlock = null;
     this.gameOver = false;
     this.paused = false;
     this.score = 0;
-    this.level = savedLevel || this.level;
     this.highScore = savedHighScore || this.highScore;
     this.linesCleared = 0;
     this.dropInterval = 1000;
     this.dropCounter = 0;
     this.keys = {};
     
-    // 重置按钮状态
-    this.restartButton.visible = false;
-    this.restartButton.x = 0;
-    this.restartButton.y = 0;
-    this.restartButton.width = 0;
-    this.restartButton.height = 0;
-    
-    this.reviveButton.visible = false;
-    this.reviveButton.x = 0;
-    this.reviveButton.y = 0;
-    this.reviveButton.width = 0;
-    this.reviveButton.height = 0;
-    
-    // 重置复活状态
     this.reviveUsed = false;
-    
-    // 重置胜利弹窗状态
     this.showVictoryPopup = false;
     this.victoryMessage = '';
     this.victoryButton.visible = false;
@@ -1471,16 +1398,13 @@ export default class TetrisGame {
     this.victoryButton.width = 0;
     this.victoryButton.height = 0;
     
-    // 注意：广告管理器不会被重置，广告会继续显示
-    
-    // 停止死亡动画
     this.pengfuAnimation.stop();
+    
+    this.resetGridForNewLevel();
     
     if (this.musicManager) {
       this.musicManager.playRandom();
     }
-
-    this.createNewBlock();
   }
 
   /**
@@ -1502,10 +1426,6 @@ export default class TetrisGame {
         // 重置游戏状态
         this.gameOver = false;
         this.reviveUsed = true;
-        
-        // 隐藏弹窗按钮
-        this.restartButton.visible = false;
-        this.reviveButton.visible = false;
         
         // 重新创建当前方块（使用现有的下一个方块）
         this.currentBlock = this.nextBlock;
@@ -1543,8 +1463,6 @@ export default class TetrisGame {
         )) {
           console.log('复活失败，网格已满');
           this.gameOver = true;
-          this.restartButton.visible = true;
-          this.reviveButton.visible = true;
         } else {
           console.log('复活成功，游戏继续');
           // 停止死亡动画
@@ -1580,6 +1498,6 @@ export default class TetrisGame {
 }
 
 // 将分数配置暴露给全局作用域，便于调试
-if (typeof GameGlobal !== 'undefined') {
+if (typeof GameGlobal !== 'undefined' && isDebugMode) {
   GameGlobal.SCORE_CONFIG = SCORE_CONFIG;
 }

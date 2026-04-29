@@ -21,6 +21,7 @@ export default class Main {
     this.rankPanel = null;
     this.currentState = 'cover';
     this.aniId = null;
+    this.mainLoop = this.mainLoop.bind(this);
     this.energyManager = new EnergyManager();
     this.playerData = null;
     this.savedLevel = 1;
@@ -471,8 +472,6 @@ export default class Main {
 
     if (this.currentState === 'cover' && this.cover) {
       const clickedId = this.cover.handleClick(x, y);
-      // console.log('handleTouch clickedId:', clickedId);
-      
       if (clickedId === 'play') {
         this.startGame();
       } else if (clickedId === 'scoresNav') {
@@ -549,9 +548,6 @@ export default class Main {
       this.cover.hide(true);
     }
 
-    // 根据文档，头像授权按钮应保留直到用户授权，不在此处销毁
-    // this.destroyUserInfoButton();
-
     // 停止主循环（封面渲染）
     this.stopMainLoop();
     
@@ -623,7 +619,7 @@ export default class Main {
     
     // 如果当前状态是游戏，并且游戏有自己的循环，我们不需要运行主循环
     if (this.currentState === 'game') {
-      this.aniId = requestAnimationFrame(this.mainLoop.bind(this));
+      this.aniId = requestAnimationFrame(this.mainLoop);
       return;
     }
     
@@ -632,7 +628,7 @@ export default class Main {
       if (this.rankPanel) {
         this.rankPanel.render();
       }
-      this.aniId = requestAnimationFrame(this.mainLoop.bind(this));
+      this.aniId = requestAnimationFrame(this.mainLoop);
       return;
     }
     
@@ -645,7 +641,7 @@ export default class Main {
     }
     
     // 继续循环
-    this.aniId = requestAnimationFrame(this.mainLoop.bind(this));
+    this.aniId = requestAnimationFrame(this.mainLoop);
   }
 
   /**

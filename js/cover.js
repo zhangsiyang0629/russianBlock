@@ -3,6 +3,7 @@
  * 参考 ui/cover.html 设计
  */
 import { initCloud } from './tetris/playerData';
+import { drawRoundedRect } from './tetris/utils';
 
 export default class Cover {
   constructor(ctx, getEnergyInfo = null, onPrivacyAction = null, musicManager = null) {
@@ -213,7 +214,7 @@ export default class Cover {
     ctx.fillStyle = '#fffcf5';
     ctx.strokeStyle = '#322f22';
     ctx.lineWidth = 4;
-    this.drawRoundedRect(ctx, dx, dy, dw, dh, 20);
+    drawRoundedRect(ctx, dx, dy, dw, dh, 20);
     ctx.fill();
     ctx.stroke();
 
@@ -250,7 +251,7 @@ export default class Cover {
 
     const drawToggle = (tx, ty, on, onColor) => {
       ctx.fillStyle = on ? onColor : '#b2ad9c';
-      this.drawRoundedRect(ctx, tx, ty, toggleW, toggleH, toggleH / 2);
+      drawRoundedRect(ctx, tx, ty, toggleW, toggleH, toggleH / 2);
       ctx.fill();
       const knobX = on ? tx + toggleW - 12 - 2 : tx + 2;
       ctx.fillStyle = '#ffffff';
@@ -266,12 +267,12 @@ export default class Cover {
       const barH = 6;
       const thumbR = 10;
       ctx.fillStyle = '#eae2cb';
-      this.drawRoundedRect(ctx, sx, sy + 10 - barH / 2, sw, barH, barH / 2);
+      drawRoundedRect(ctx, sx, sy + 10 - barH / 2, sw, barH, barH / 2);
       ctx.fill();
       ctx.fillStyle = color;
       const fillW = sw * val;
       if (fillW > barH) {
-        this.drawRoundedRect(ctx, sx, sy + 10 - barH / 2, fillW, barH, barH / 2);
+        drawRoundedRect(ctx, sx, sy + 10 - barH / 2, fillW, barH, barH / 2);
         ctx.fill();
       }
       ctx.fillStyle = color;
@@ -672,20 +673,6 @@ export default class Cover {
   /**
    * 绘制圆角矩形
    */
-  drawRoundedRect(ctx, x, y, width, height, radius) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-  }
-
   /**
    * 绘制游戏标题
    */
@@ -872,7 +859,7 @@ export default class Cover {
     // 绘制阴影（圆角）
     ctx.fillStyle = isDisabled ? '#b2ad9c' : '#322f22';
     const borderRadius = button.height / 2;
-    this.drawRoundedRect(ctx, button.x + 6, button.y + 6, button.width, button.height, borderRadius);
+    drawRoundedRect(ctx, button.x + 6, button.y + 6, button.width, button.height, borderRadius);
     ctx.fill();
     
     // 绘制按钮背景
@@ -882,7 +869,7 @@ export default class Cover {
     ctx.lineWidth = 4;
     
     // 绘制圆角矩形
-    this.drawRoundedRect(ctx, button.x, button.y, button.width, button.height, borderRadius);
+    drawRoundedRect(ctx, button.x, button.y, button.width, button.height, borderRadius);
     ctx.fill();
     ctx.stroke();
     
