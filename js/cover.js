@@ -2,6 +2,8 @@
  * 游戏封面类
  * 参考 ui/cover.html 设计
  */
+import { initCloud } from './tetris/playerData';
+
 export default class Cover {
   constructor(ctx, getEnergyInfo = null, onPrivacyAction = null) {
     this.ctx = ctx;
@@ -52,39 +54,81 @@ export default class Cover {
     try { savedUserInfoBound = !!wx.getStorageSync('userInfoBound'); } catch (e) {}
     this.userInfoBound = savedUserInfoBound;
     
-    // 隐私授权弹窗
-    this.privacyModal = {
-      show: false, // 是否显示弹窗
-      title: '隐私协议确认',
-      message: '请确认您已详细阅读并同意用户服务协议和隐私保护政策',
-      checkbox: {
-        checked: false, // 弹窗内勾选框状态
-        x: 0,
-        y: 0,
-        size: 20
-      },
-      confirmButton: {
-        id: 'agree-btn',
-        text: '确认同意',
-        x: 0,
-        y: 0,
-        width: 120,
-        height: 40,
-        color: '#4CAF50'
-      },
-      cancelButton: {
-        id: 'privacyCancel',
-        text: '取消',
-        x: 0,
-        y: 0,
-        width: 80,
-        height: 40,
-        color: '#757575'
-      }
-    };
+    // 初始化背景音乐
+    this.initBgm();
     
     // 开始加载资源
     this.loadResources();
+  }
+
+  /**
+   * 初始化封面背景音乐
+   */
+  initBgm() {
+    this.bgm = null;
+    this.bgmPendingPlay = false;
+    if (typeof wx === 'undefined' || !wx.createInnerAudioContext) {
+      console.warn('wx.createInnerAudioContext not available');
+      return;
+    }
+    this.bgm = wx.createInnerAudioContext();
+    this.bgm.loop = true;
+    this.bgm.autoplay = false;
+    this.bgm.volume = 0.5;
+    this.bgm.onError((res) => {
+      console.warn('背景音乐播放失败:', res);
+    });
+    const cloudFileId = 'cloud://cloudbase-d5gyz0rzwf3c9a078.636c-cloudbase-d5gyz0rzwf3c9a078-1424022365/bgm/cover.mp3';
+    const playBgm = () => {
+      if (this.bgmPendingPlay || this.active) {
+        this.bgm.play();
+        this.bgmPendingPlay = false;
+      }
+    };
+    const tryCosSigned = () => {
+      if (typeof wx.cloud !== 'undefined' && initCloud()) {
+        wx.cloud.callFunction({
+          name: 'getCosUrl',
+          data: { fileKey: 'cover.mp3' },
+          success: (res) => {
+            if (res.result && res.result.url) {
+              this.bgm.src = res.result.url;
+              console.log('getCosUrl', res.result.url);
+              playBgm();
+            } else {
+              fallbackLocal();
+            }
+          },
+          fail: () => { fallbackLocal(); }
+        });
+      } else {
+        fallbackLocal();
+      }
+    };
+    const fallbackLocal = () => {
+      console.warn('所有在线音频源失败，跳过背景音乐');
+    };
+    if (typeof wx.cloud !== 'undefined' && wx.cloud.getTempFileURL && initCloud()) {
+      wx.cloud.getTempFileURL({
+        fileList: [cloudFileId],
+        success: (res) => {
+          const file = res.fileList[0];
+          if (file && file.tempFileURL) {
+            this.bgm.src = file.tempFileURL;
+            playBgm();
+          } else {
+            console.warn('云存储临时URL为空，降级到COS签名');
+            tryCosSigned();
+          }
+        },
+        fail: (err) => {
+          console.warn('获取音频临时URL失败，降级到COS签名:', err);
+          tryCosSigned();
+        }
+      });
+    } else {
+      tryCosSigned();
+    }
   }
   
   /**
@@ -104,57 +148,33 @@ export default class Cover {
         'mike.png'
       ];
       
-      let imagesLoaded = 0;
-      const totalImages = 1;
-      
-      // 为图像创建重试逻辑
+      let currentFormat = 0;
+
       const tryLoadImage = (formatIndex) => {
         if (formatIndex >= pathFormats.length) {
-          // 所有格式都尝试过了，仍然失败
-          console.error('封面角色图像所有路径格式都加载失败');
-          imagesLoaded++;
-          if (imagesLoaded === totalImages) {
-            this.resourcesLoaded = true;
-            console.log('封面资源加载尝试完成');
-          }
+          this.resourcesLoaded = true;
           return;
         }
-        
+
+        currentFormat = formatIndex;
         const src = pathFormats[formatIndex];
         console.log(`加载封面图像，尝试格式 ${formatIndex}: ${src}`);
         this.characterImage.src = src;
-        
-        // 临时存储当前格式索引
-        this.characterImage._currentFormat = formatIndex;
-        this.characterImage._src = src;
       };
-      
+
       this.characterImage.onload = () => {
-        console.log(`封面角色图像加载成功 (格式 ${this.characterImage._currentFormat}: ${this.characterImage._src})`);
-        imagesLoaded++;
-        if (imagesLoaded === totalImages) {
-          this.resourcesLoaded = true;
-          console.log('封面资源加载完成');
-        }
+        console.log(`封面角色图像加载成功 (格式 ${currentFormat}: ${pathFormats[currentFormat]})`);
+        this.resourcesLoaded = true;
       };
-      
+
       this.characterImage.onerror = (err) => {
-        console.error(`封面角色图像格式 ${this.characterImage._currentFormat} 加载失败:`, err);
-        console.error(`失败详情: src="${this.characterImage._src}", error=${err?.message || err}`);
-        
-        // 尝试下一个格式
-        const nextFormatIndex = this.characterImage._currentFormat + 1;
+        console.error(`封面角色图像格式 ${currentFormat} 加载失败:`, err);
+
+        const nextFormatIndex = currentFormat + 1;
         if (nextFormatIndex < pathFormats.length) {
-          console.log(`封面图像尝试下一个格式 ${nextFormatIndex}`);
           setTimeout(() => tryLoadImage(nextFormatIndex), 10);
         } else {
-          // 所有格式都失败了
-          console.error('封面角色图像所有格式都加载失败');
-          imagesLoaded++;
-          if (imagesLoaded === totalImages) {
-            this.resourcesLoaded = true;
-            console.log('封面资源加载尝试完成（可能失败）');
-          }
+          this.resourcesLoaded = true;
         }
       };
       
@@ -166,44 +186,25 @@ export default class Cover {
       this.resourcesLoaded = true;
     }
   }
-  
 
-  
   /**
    * 渲染封面
    */
   render() {
     if (!this.active) return;
-    
+
     const { ctx, canvas } = this;
     const width = canvas.width;
     const height = canvas.height;
-    
-    // 清空画布
+
     ctx.clearRect(0, 0, width, height);
-    
-    // 绘制纸质纹理背景
     this.drawPaperTexture();
-    
-    // 绘制装饰性蜡笔方块
     this.drawDecorativeBlocks();
-    
-    // 绘制体力信息
     this.drawEnergyInfo();
-    
-    // 绘制中央角色部分
     this.drawCharacterSection();
-    
-    // 绘制游戏标题
     this.drawGameTitle();
-    
-    // 绘制操作按钮
     this.drawActionButtons();
-    
-    // 绘制底部导航
     this.drawBottomNav();
-
-
   }
   
   /**
@@ -382,8 +383,6 @@ export default class Cover {
     }
   }
 
-
-
   /**
    * 设置微信用户信息绑定状态
    * @param {boolean} bound - 是否已绑定微信用户信息
@@ -392,16 +391,6 @@ export default class Cover {
     console.log('setUserInfoBound: 设置状态为', bound);
     this.userInfoBound = bound;
   }
-
-  /**
-   * 隐藏隐私协议确认弹窗
-   */
-  hidePrivacyModal() {
-    console.log('隐藏隐私协议确认弹窗');
-    this.privacyModal.show = false;
-  }
-
-
 
   /**
    * 绘制圆角矩形
@@ -421,7 +410,7 @@ export default class Cover {
   }
 
   /**
-   * 渲染封面
+   * 绘制游戏标题
    */
   drawGameTitle() {
     const { ctx, canvas } = this;
@@ -898,6 +887,10 @@ export default class Cover {
    */
   hide() {
     this.active = false;
+    this.bgmPendingPlay = false;
+    if (this.bgm) {
+      this.bgm.stop();
+    }
     console.log('封面隐藏');
   }
   
@@ -906,6 +899,13 @@ export default class Cover {
    */
   show() {
     this.active = true;
+    if (this.bgm) {
+      if (this.bgm.src) {
+        this.bgm.play();
+      } else {
+        this.bgmPendingPlay = true;
+      }
+    }
     console.log('封面显示');
   }
 }

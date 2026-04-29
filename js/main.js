@@ -388,8 +388,6 @@ export default class Main {
      });
    }
 
-
-
    /**
     * 绑定全局事件
     */
@@ -469,19 +467,15 @@ export default class Main {
       const clickedId = this.cover.handleClick(x, y);
       console.log('handleTouch clickedId:', clickedId);
       
-      if (clickedId === 'play' || clickedId === 'playNav') {
+      if (clickedId === 'play') {
         this.startGame();
       } else if (clickedId === 'scoresNav') {
         this.handleRankEntry('score');
       } else if (clickedId === 'levelsNav') {
         this.handleRankEntry('level');
-      } else if (clickedId === 'scores') {
-        this.handleRankEntry('score');
-      } else if (clickedId === 'shop') {
-        console.log('打开商店页面');
       } else if (clickedId === 'settingsNav') {
         console.log('打开设置页面');
-      } 
+      }
     } else if (this.currentState === 'game' && this.game) {
       this.game.handleTouch(x, y);
     }

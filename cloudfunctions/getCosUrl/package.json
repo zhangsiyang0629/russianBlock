@@ -1,0 +1,10 @@
+{
+  "name": "getCosUrl",
+  "version": "1.0.0",
+  "description": "获取COS对象存储签名URL",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest",
+    "cos-nodejs-sdk-v5": "^2.11.12"
+  }
+}

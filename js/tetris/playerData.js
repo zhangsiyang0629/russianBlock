@@ -21,19 +21,6 @@ function initCloud() {
   }
 }
 
-async function getOpenId() {
-  if (typeof wx === 'undefined' || !wx.cloud) return null;
-  try {
-    const loginRes = await wx.cloud.callFunction({
-      name: 'login'
-    });
-    return loginRes.result.openid;
-  } catch (err) {
-    console.warn('获取openid失败:', err);
-    return null;
-  }
-}
-
 function getDefaultNickname() {
   const randomStr = Math.random().toString().slice(2, 8);
   return `游客${Date.now()}${randomStr}`;
@@ -85,27 +72,17 @@ async function getOrCreatePlayerData() {
   if (initCloud()) {
     try {
       const db = wx.cloud.database();
-      // 获取当前用户的openid
-      const openid = await getOpenId();
       
-      if (!openid) {
-        throw new Error('无法获取openid，降级到本地存储');
-      }
-      
-      // 使用openid精确查询当前用户的数据
       const result = await db.collection('player_data').where({
-        _openid: openid
+        _openid: '{openid}'
       }).get();
-      console.log('使用openid查询结果:', result.data.length, '条数据', openid);
       
        if (result.data.length > 0) {
          const playerData = result.data[0];
-         // 检查并修复缺失的体力字段
          await ensureEnergyFields(db, playerData);
          return playerData;
        }
       
-      // 创建新用户数据
       const defaultData = {
         nickname: getDefaultNickname(),
         avatarUrl: getDefaultAvatar(),
@@ -113,16 +90,12 @@ async function getOrCreatePlayerData() {
         level: 1,
         energy: 30,
         energyUpdateTime: Date.now(),
-        lastDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        lastDate: new Date().toISOString().split('T')[0],
         updateTime: db.serverDate()
       };
       await db.collection('player_data').add({ data: defaultData });
       
-      // 重新查询新创建的数据
-      const newResult = await db.collection('player_data').where({
-        _openid: openid
-      }).get();
-      return newResult.data[0] || null;
+      return { ...defaultData, _id: null };
     } catch (err) {
       console.error('云数据库操作失败，降级到本地存储:', err);
     }
@@ -165,20 +138,12 @@ async function updatePlayerData(updateFields) {
   if (initCloud()) {
     try {
       const db = wx.cloud.database();
-      // 获取当前用户的openid
-      const openid = await getOpenId();
       
-      if (!openid) {
-        throw new Error('无法获取openid，降级到本地存储');
-      }
-      
-      // 使用openid精确查询当前用户的数据
       const result = await db.collection('player_data').where({
-        _openid: openid
+        _openid: '{openid}'
       }).get();
       
       if (result.data.length > 0) {
-        // 更新现有记录
         const record = result.data[0];
         await db.collection('player_data').doc(record._id).update({
           data: {
@@ -188,7 +153,6 @@ async function updatePlayerData(updateFields) {
         });
         return true;
       } else {
-        // 没有找到记录，创建新记录
         const defaultData = {
           nickname: getDefaultNickname(),
           avatarUrl: getDefaultAvatar(),
@@ -196,8 +160,8 @@ async function updatePlayerData(updateFields) {
           level: 1,
           energy: 30,
           energyUpdateTime: Date.now(),
-          lastDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-          ...updateFields, // 合并传入的更新字段
+          lastDate: new Date().toISOString().split('T')[0],
+          ...updateFields,
           updateTime: db.serverDate()
         };
         await db.collection('player_data').add({ data: defaultData });
