@@ -5,9 +5,10 @@
 import { initCloud } from './tetris/playerData';
 
 export default class Cover {
-  constructor(ctx, getEnergyInfo = null, onPrivacyAction = null) {
+  constructor(ctx, getEnergyInfo = null, onPrivacyAction = null, musicManager = null) {
     this.ctx = ctx;
     this.canvas = ctx.canvas;
+    this.musicManager = musicManager;
     
     // 封面状态
     this.active = true;
@@ -100,7 +101,7 @@ export default class Cover {
       if (typeof wx.cloud !== 'undefined' && initCloud()) {
         wx.cloud.callFunction({
           name: 'getCosUrl',
-          data: { fileKey: 'cover.mp3' },
+          data: { bucket: 'gamebgm-1333103280', fileKey: 'cover.mp3' },
           success: (res) => {
             if (res.result && res.result.url) {
               this.bgm.src = res.result.url;
@@ -364,6 +365,9 @@ export default class Cover {
           this.bgm.pause();
         }
       }
+      if (this.musicManager) {
+        this.musicManager.setOn(this.settings.musicOn);
+      }
       this.saveSettings();
       return null;
     }
@@ -374,6 +378,9 @@ export default class Cover {
       this.settings.musicVolume = vol;
       if (this.bgm) {
         this.bgm.volume = vol;
+      }
+      if (this.musicManager) {
+        this.musicManager.setVolume(vol);
       }
       this.saveSettings();
       return null;
@@ -1159,9 +1166,12 @@ export default class Cover {
   /**
    * 隐藏封面
    */
-  hide() {
+  hide(stopBgm = false) {
     this.active = false;
     this.bgmPendingPlay = false;
+    if (stopBgm && this.bgm) {
+      this.bgm.stop();
+    }
     if (this.showingSettings) {
       this.hideSettings();
     }

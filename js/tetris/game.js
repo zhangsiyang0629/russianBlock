@@ -130,10 +130,12 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
  * 俄罗斯方块游戏主类
  */
 export default class TetrisGame {
-  constructor(ctx, savedLevel = 1, savedHighScore = 0) {
+  constructor(ctx, savedLevel = 1, savedHighScore = 0, musicManager = null) {
     this.ctx = ctx;
     const canvas = ctx.canvas;
     
+    this.musicManager = musicManager;
+
     // 广告管理器
     this.adManager = new AdManager();
     
@@ -328,6 +330,9 @@ export default class TetrisGame {
       this.aniId = null;
     }
     this.setupInput();
+    if (this.musicManager) {
+      this.musicManager.playRandom();
+    }
     this.gameLoop(0);
   }
 
@@ -353,7 +358,10 @@ export default class TetrisGame {
     )) {
       this.gameOver = true;
       console.log('Game Over!');
-      
+      if (this.musicManager) {
+        this.musicManager.stop();
+      }
+
       // 更新最高分并保存玩家数据
       if (this.score > this.highScore) {
         this.highScore = this.score;
@@ -1335,6 +1343,10 @@ export default class TetrisGame {
     // 停止死亡动画
     this.pengfuAnimation.stop();
     
+    if (this.musicManager) {
+      this.musicManager.playRandom();
+    }
+
     this.createNewBlock();
   }
 
@@ -1424,6 +1436,11 @@ export default class TetrisGame {
     // 停止死亡动画
     this.pengfuAnimation.stop();
     
+    // 停止背景音乐
+    if (this.musicManager) {
+      this.musicManager.stop();
+    }
+
     // 取消动画帧
     cancelAnimationFrame(this.aniId);
   }

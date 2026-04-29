@@ -4,7 +4,7 @@ const COS = require('cos-nodejs-sdk-v5')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 exports.main = async (event, context) => {
-  const { fileKey = 'cover.mp3' } = event
+  const { bucket = 'gamebgm-1333103280', fileKey = 'cover.mp3', region = 'ap-chengdu' } = event
 
   const cos = new COS({
     SecretId: process.env.COS_SECRET_ID,
@@ -13,8 +13,8 @@ exports.main = async (event, context) => {
 
   const url = await new Promise((resolve, reject) => {
     cos.getObjectUrl({
-      Bucket: 'gamebgm-1333103280',
-      Region: 'ap-chengdu',
+      Bucket: bucket,
+      Region: region,
       Key: fileKey,
       Protocol: 'https',
       Method: 'GET',

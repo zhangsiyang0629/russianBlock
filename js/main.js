@@ -4,8 +4,11 @@ import Cover from './cover';
 import EnergyManager from './tetris/energy';
 import RankPanel from './tetris/rank';
 import { getOrCreatePlayerData, updateUserInfo } from './tetris/playerData';
+import MusicManager from './tetris/music';
 
 const isDebugMode = false
+
+const MUSIC_COUNT = 5
 
 /**
  * 游戏主类
@@ -34,6 +37,9 @@ export default class Main {
     this.userInfoBound = savedUserInfoBound;
     this.userInfoButton = null; // wx.createUserInfoButton 实例
     
+    // 游戏音乐管理器
+    this.musicManager = new MusicManager(MUSIC_COUNT);
+
     // 防重复点击标志
     this.isStartingGame = false;
     
@@ -60,7 +66,7 @@ export default class Main {
     }, (action, data) => {
       // 处理隐私协议相关操作
       this.handleCoverPrivacyAction(action, data);
-    });
+    }, this.musicManager);
     
     // 从云数据库同步体力数据
     this.syncEnergyFromCloud();
@@ -538,9 +544,9 @@ export default class Main {
       this.savedHighScore = 0;
     }
     
-    // 隐藏封面
+    // 隐藏封面（停止封面BGM，让游戏音乐接管）
     if (this.cover) {
-      this.cover.hide();
+      this.cover.hide(true);
     }
 
     // 根据文档，头像授权按钮应保留直到用户授权，不在此处销毁
@@ -552,7 +558,7 @@ export default class Main {
     try {
       // 创建游戏实例
       if (!this.game) {
-        this.game = new TetrisGame(this.ctx, this.savedLevel, this.savedHighScore);
+        this.game = new TetrisGame(this.ctx, this.savedLevel, this.savedHighScore, this.musicManager);
         this.game.start();
       } else {
         this.game.restart(this.savedLevel, this.savedHighScore);
