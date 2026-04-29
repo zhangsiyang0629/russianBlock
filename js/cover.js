@@ -54,6 +54,17 @@ export default class Cover {
     try { savedUserInfoBound = !!wx.getStorageSync('userInfoBound'); } catch (e) {}
     this.userInfoBound = savedUserInfoBound;
     
+    // 设置面板
+    this.showingSettings = false;
+    this.settings = {
+      musicOn: true,
+      musicVolume: 0.5,
+      sfxOn: true,
+      sfxVolume: 0.5
+    };
+    this._settingsHitAreas = {};
+    this.loadSettings();
+
     // 初始化背景音乐
     this.initBgm();
     
@@ -74,13 +85,13 @@ export default class Cover {
     this.bgm = wx.createInnerAudioContext();
     this.bgm.loop = true;
     this.bgm.autoplay = false;
-    this.bgm.volume = 0.5;
+    this.bgm.volume = this.settings.musicVolume;
     this.bgm.onError((res) => {
       console.warn('背景音乐播放失败:', res);
     });
     const cloudFileId = 'cloud://cloudbase-d5gyz0rzwf3c9a078.636c-cloudbase-d5gyz0rzwf3c9a078-1424022365/bgm/cover.mp3';
     const playBgm = () => {
-      if (this.bgmPendingPlay || this.active) {
+      if ((this.bgmPendingPlay || this.active) && this.settings.musicOn) {
         this.bgm.play();
         this.bgmPendingPlay = false;
       }
@@ -131,6 +142,261 @@ export default class Cover {
     }
   }
   
+  /**
+   * 从本地存储加载设置
+   */
+  loadSettings() {
+    try {
+      const saved = wx.getStorageSync('coverSettings');
+      if (saved) {
+        if (typeof saved.musicOn === 'boolean') this.settings.musicOn = saved.musicOn;
+        if (typeof saved.musicVolume === 'number') this.settings.musicVolume = saved.musicVolume;
+        if (typeof saved.sfxOn === 'boolean') this.settings.sfxOn = saved.sfxOn;
+        if (typeof saved.sfxVolume === 'number') this.settings.sfxVolume = saved.sfxVolume;
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * 保存设置到本地存储
+   */
+  saveSettings() {
+    try {
+      wx.setStorageSync('coverSettings', this.settings);
+    } catch (e) {}
+  }
+
+  /**
+   * 显示设置面板
+   */
+  showSettings() {
+    this.showingSettings = true;
+  }
+
+  /**
+   * 隐藏设置面板
+   */
+  hideSettings() {
+    this.showingSettings = false;
+    this._settingsHitAreas = {};
+    this.saveSettings();
+  }
+
+  /**
+   * 渲染设置弹窗
+   */
+  renderSettings() {
+    const { ctx, canvas } = this;
+    const w = canvas.width;
+    const h = canvas.height;
+    const hit = {};
+
+    ctx.save();
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillRect(0, 0, w, h);
+
+    const dw = Math.min(330, w * 0.85);
+    const contentW = dw - 48;
+    const dh = 300;
+    const dx = (w - dw) / 2;
+    const dy = (h - dh) / 2 - 20;
+
+    hit.dialog = { x: dx, y: dy, w: dw, h: dh };
+
+    ctx.save();
+    ctx.translate(dx + dw / 2, dy + dh / 2);
+    ctx.rotate(-1 * Math.PI / 180);
+    ctx.translate(-(dx + dw / 2), -(dy + dh / 2));
+
+    ctx.fillStyle = '#fffcf5';
+    ctx.strokeStyle = '#322f22';
+    ctx.lineWidth = 4;
+    this.drawRoundedRect(ctx, dx, dy, dw, dh, 20);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+
+    const cx = w / 2;
+
+    ctx.fillStyle = '#322f22';
+    ctx.font = 'bold 26px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SETTINGS', cx, dy + 32);
+
+    const closeSize = 32;
+    const closeX = dx + dw - closeSize - 10;
+    const closeY = dy + 8;
+    hit.close = { x: closeX, y: closeY, w: closeSize, h: closeSize };
+
+    ctx.save();
+    ctx.fillStyle = '#f95630';
+    ctx.beginPath();
+    ctx.arc(closeX + closeSize / 2, closeY + closeSize / 2, closeSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✕', closeX + closeSize / 2, closeY + closeSize / 2);
+    ctx.restore();
+
+    const sectionX = dx + 24;
+    const toggleW = 44;
+    const toggleH = 24;
+
+    const drawToggle = (tx, ty, on, onColor) => {
+      ctx.fillStyle = on ? onColor : '#b2ad9c';
+      this.drawRoundedRect(ctx, tx, ty, toggleW, toggleH, toggleH / 2);
+      ctx.fill();
+      const knobX = on ? tx + toggleW - 12 - 2 : tx + 2;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(knobX + 10, ty + toggleH / 2, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    };
+
+    const drawSlider = (sx, sy, sw, val, color) => {
+      const barH = 6;
+      const thumbR = 10;
+      ctx.fillStyle = '#eae2cb';
+      this.drawRoundedRect(ctx, sx, sy + 10 - barH / 2, sw, barH, barH / 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      const fillW = sw * val;
+      if (fillW > barH) {
+        this.drawRoundedRect(ctx, sx, sy + 10 - barH / 2, fillW, barH, barH / 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = color;
+      const thumbX = sx + sw * val;
+      ctx.beginPath();
+      ctx.arc(thumbX, sy + 10, thumbR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    };
+
+    let sectionY = dy + 62;
+
+    ctx.fillStyle = '#5f5b4d';
+    ctx.font = 'bold 15px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('♫ MUSIC', sectionX, sectionY + 12);
+
+    const musicToggleX = sectionX + contentW - toggleW;
+    hit.musicToggle = { x: musicToggleX, y: sectionY, w: toggleW, h: 24 };
+    drawToggle(musicToggleX, sectionY, this.settings.musicOn, '#993d46');
+
+    sectionY += 46;
+    hit.musicSlider = { x: sectionX, y: sectionY, w: contentW, h: 20 };
+    drawSlider(sectionX, sectionY, contentW, this.settings.musicVolume, '#993d46');
+
+    sectionY += 40;
+
+    ctx.fillStyle = '#5f5b4d';
+    ctx.font = 'bold 15px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔊 SOUND FX', sectionX, sectionY + 12);
+
+    const sfxToggleX = sectionX + contentW - toggleW;
+    hit.sfxToggle = { x: sfxToggleX, y: sectionY, w: toggleW, h: 24 };
+    drawToggle(sfxToggleX, sectionY, this.settings.sfxOn, '#296654');
+
+    sectionY += 46;
+    hit.sfxSlider = { x: sectionX, y: sectionY, w: contentW, h: 20 };
+    drawSlider(sectionX, sectionY, contentW, this.settings.sfxVolume, '#296654');
+
+    sectionY += 48;
+
+    const btnW = 180;
+    const btnH = 40;
+    const btnX = (w - btnW) / 2;
+    const btnY = sectionY;
+    hit.backBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+    this.drawButton(ctx, { x: btnX, y: btnY, width: btnW, height: btnH, id: 'back', text: 'BACK', color: '#fdd1b4' }, 0, '#fdd1b4', '#4f341f', false);
+
+    ctx.restore();
+    this._settingsHitAreas = hit;
+  }
+
+  /**
+   * 处理设置面板点击
+   */
+  handleSettingsClick(x, y) {
+    const hit = this._settingsHitAreas;
+
+    if (hit.close && x >= hit.close.x && x <= hit.close.x + hit.close.w &&
+        y >= hit.close.y && y <= hit.close.y + hit.close.h) {
+      this.hideSettings();
+      return null;
+    }
+
+    if (hit.backBtn && x >= hit.backBtn.x && x <= hit.backBtn.x + hit.backBtn.w &&
+        y >= hit.backBtn.y && y <= hit.backBtn.y + hit.backBtn.h) {
+      this.hideSettings();
+      return null;
+    }
+
+    if (hit.dialog && (x < hit.dialog.x || x > hit.dialog.x + hit.dialog.w ||
+        y < hit.dialog.y || y > hit.dialog.y + hit.dialog.h)) {
+      this.hideSettings();
+      return null;
+    }
+
+    if (hit.musicToggle && x >= hit.musicToggle.x && x <= hit.musicToggle.x + hit.musicToggle.w &&
+        y >= hit.musicToggle.y && y <= hit.musicToggle.y + hit.musicToggle.h) {
+      this.settings.musicOn = !this.settings.musicOn;
+      if (this.settings.musicOn) {
+        if (this.bgm && this.bgm.paused) {
+          this.bgm.play();
+        }
+      } else {
+        if (this.bgm) {
+          this.bgm.pause();
+        }
+      }
+      this.saveSettings();
+      return null;
+    }
+
+    if (hit.musicSlider && x >= hit.musicSlider.x && x <= hit.musicSlider.x + hit.musicSlider.w &&
+        y >= hit.musicSlider.y && y <= hit.musicSlider.y + hit.musicSlider.h) {
+      const vol = Math.max(0, Math.min(1, (x - hit.musicSlider.x) / hit.musicSlider.w));
+      this.settings.musicVolume = vol;
+      if (this.bgm) {
+        this.bgm.volume = vol;
+      }
+      this.saveSettings();
+      return null;
+    }
+
+    if (hit.sfxToggle && x >= hit.sfxToggle.x && x <= hit.sfxToggle.x + hit.sfxToggle.w &&
+        y >= hit.sfxToggle.y && y <= hit.sfxToggle.y + hit.sfxToggle.h) {
+      this.settings.sfxOn = !this.settings.sfxOn;
+      this.saveSettings();
+      return null;
+    }
+
+    if (hit.sfxSlider && x >= hit.sfxSlider.x && x <= hit.sfxSlider.x + hit.sfxSlider.w &&
+        y >= hit.sfxSlider.y && y <= hit.sfxSlider.y + hit.sfxSlider.h) {
+      const vol = Math.max(0, Math.min(1, (x - hit.sfxSlider.x) / hit.sfxSlider.w));
+      this.settings.sfxVolume = vol;
+      this.saveSettings();
+      return null;
+    }
+
+    return null;
+  }
+
   /**
    * 加载图片资源
    */
@@ -205,6 +471,10 @@ export default class Cover {
     this.drawGameTitle();
     this.drawActionButtons();
     this.drawBottomNav();
+
+    if (this.showingSettings) {
+      this.renderSettings();
+    }
   }
   
   /**
@@ -687,6 +957,10 @@ export default class Cover {
    */
   handleClick(x, y) {
     if (!this.active) return null;
+
+    if (this.showingSettings) {
+      return this.handleSettingsClick(x, y);
+    }
     
     console.log(`点击坐标: x=${x}, y=${y}, canvas=${this.canvas.width}x${this.canvas.height}`);
     
@@ -888,8 +1162,8 @@ export default class Cover {
   hide() {
     this.active = false;
     this.bgmPendingPlay = false;
-    if (this.bgm) {
-      this.bgm.stop();
+    if (this.showingSettings) {
+      this.hideSettings();
     }
     console.log('封面隐藏');
   }
@@ -901,7 +1175,9 @@ export default class Cover {
     this.active = true;
     if (this.bgm) {
       if (this.bgm.src) {
-        this.bgm.play();
+        if (this.bgm.paused) {
+          this.bgm.play();
+        }
       } else {
         this.bgmPendingPlay = true;
       }

@@ -465,7 +465,7 @@ export default class Main {
 
     if (this.currentState === 'cover' && this.cover) {
       const clickedId = this.cover.handleClick(x, y);
-      console.log('handleTouch clickedId:', clickedId);
+      // console.log('handleTouch clickedId:', clickedId);
       
       if (clickedId === 'play') {
         this.startGame();
@@ -474,7 +474,9 @@ export default class Main {
       } else if (clickedId === 'levelsNav') {
         this.handleRankEntry('level');
       } else if (clickedId === 'settingsNav') {
-        console.log('打开设置页面');
+        if (this.cover) {
+          this.cover.showSettings();
+        }
       }
     } else if (this.currentState === 'game' && this.game) {
       this.game.handleTouch(x, y);
