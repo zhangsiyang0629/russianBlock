@@ -38,11 +38,14 @@ const BOTTOM_PLAYER_HEIGHT = 72;
 const BOTTOM_NAV_HEIGHT = 80;
 
 export default class RankPanel {
-  constructor(ctx, playerData, onBack) {
+  constructor(ctx, playerData, onBack, options = {}) {
     this.ctx = ctx;
     this.canvas = ctx.canvas;
     this.playerData = playerData;
     this.onBack = onBack;
+    this.cover = options.cover || null;
+    this.musicManager = options.musicManager || null;
+    this.onPlay = options.onPlay || null;
 
     this.activeTab = 'score';
     this.listData = [];
@@ -57,6 +60,11 @@ export default class RankPanel {
     this.touchStartScroll = 0;
     this.myRankData = null;
 
+    this.showingSettings = false;
+    this.settings = { musicOn: true, musicVolume: 0.5, sfxOn: true, sfxVolume: 0.5 };
+    this._settingsHitAreas = {};
+    this.loadSettings();
+
     this.avatarImages = {};
 
     this.tabButtons = [
@@ -64,6 +72,17 @@ export default class RankPanel {
       { id: 'level', text: '关卡榜', x: 0, y: 0, w: 0, h: TAB_HEIGHT },
     ];
     this.backButton = { x: 0, y: 0, w: 44, h: 44 };
+  }
+
+  loadSettings() {
+    try {
+      const saved = wx.getStorageSync('coverSettings');
+      if (saved) Object.assign(this.settings, saved);
+    } catch (e) {}
+  }
+
+  saveSettings() {
+    try { wx.setStorageSync('coverSettings', this.settings); } catch (e) {}
   }
 
   loadAvatarImage(url) {
@@ -111,6 +130,7 @@ export default class RankPanel {
     this.listData = [];
     this.currentSkip = 0;
     this.hasMore = true;
+    this.showingSettings = false;
     this.isLoading = true;
     this.scrollOffset = 0;
     this.myRankData = null;
@@ -236,6 +256,10 @@ export default class RankPanel {
   handleTouchEnd(x, y) {
     if (!this.active) return;
 
+    if (this.showingSettings) {
+      return this.handleSettingsTouch(x, y);
+    }
+
     const backBtn = this.backButton;
     if (x >= backBtn.x && x <= backBtn.x + backBtn.w && y >= backBtn.y && y <= backBtn.y + backBtn.h) {
       this.hide();
@@ -259,6 +283,22 @@ export default class RankPanel {
       if (index >= 0 && index < this.listData.length) {
         return true;
       }
+    }
+
+    const navY = this.canvas.height - BOTTOM_NAV_HEIGHT;
+    if (y >= navY) {
+      const itemW = this.canvas.width / 3;
+      const idx = Math.floor(x / itemW);
+      if (idx === 0 && this.onPlay) {
+        this.onPlay();
+        return true;
+      }
+      if (idx === 2) {
+        this.showingSettings = true;
+        this._settingsHitAreas = {};
+        return true;
+      }
+      return false;
     }
 
     const deltaY = Math.abs(this.touchStartY - y);
@@ -303,6 +343,10 @@ export default class RankPanel {
     this.drawList(ctx, w);
     this.drawBottomPlayer(ctx, w, h);
     this.drawBottomNav(ctx, w, h);
+
+    if (this.showingSettings) {
+      this.renderSettingsDialog();
+    }
   }
 
   drawPaperBackground(ctx, w, h) {
@@ -640,6 +684,249 @@ export default class RankPanel {
     ctx.fillStyle = COLORS.secondary;
     ctx.font = 'bold 16px Arial';
     ctx.fillText(this.activeTab === 'score' ? this.formatScore(myScore) : `Lv.${myScore}`, marginX + pw - 12, py + BOTTOM_PLAYER_HEIGHT / 2 + 12);
+  }
+
+  renderSettingsDialog() {
+    const { ctx, canvas } = this;
+    const w = canvas.width;
+    const h = canvas.height;
+    const hit = {};
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillRect(0, 0, w, h);
+
+    const dw = Math.min(330, w * 0.85);
+    const contentW = dw - 48;
+    const dh = 300;
+    const dx = (w - dw) / 2;
+    const dy = (h - dh) / 2 - 20;
+    hit.dialog = { x: dx, y: dy, w: dw, h: dh };
+
+    ctx.save();
+    ctx.translate(dx + dw / 2, dy + dh / 2);
+    ctx.rotate(-1 * Math.PI / 180);
+    ctx.translate(-(dx + dw / 2), -(dy + dh / 2));
+    ctx.fillStyle = '#fffcf5';
+    ctx.strokeStyle = '#322f22';
+    ctx.lineWidth = 4;
+    this.drawRoundedRect(ctx, dx, dy, dw, dh, 20);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    const cx = w / 2;
+    ctx.fillStyle = '#322f22';
+    ctx.font = 'bold 26px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SETTINGS', cx, dy + 32);
+
+    const closeSize = 32;
+    const closeX = dx + dw - closeSize - 10;
+    const closeY = dy + 8;
+    hit.close = { x: closeX, y: closeY, w: closeSize, h: closeSize };
+
+    ctx.save();
+    ctx.fillStyle = '#f95630';
+    ctx.beginPath();
+    ctx.arc(closeX + closeSize / 2, closeY + closeSize / 2, closeSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✕', closeX + closeSize / 2, closeY + closeSize / 2);
+    ctx.restore();
+
+    const sectionX = dx + 24;
+    const toggleW = 44;
+    const toggleH = 24;
+
+    const drawToggle = (tx, ty, on, onColor) => {
+      ctx.fillStyle = on ? onColor : '#b2ad9c';
+      this.drawRoundedRect(ctx, tx, ty, toggleW, toggleH, toggleH / 2);
+      ctx.fill();
+      const knobX = on ? tx + toggleW - 12 - 2 : tx + 2;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(knobX + 10, ty + toggleH / 2, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    };
+
+    const drawSlider = (sx, sy, sw, val, color) => {
+      const barH = 6;
+      const thumbR = 10;
+      ctx.fillStyle = '#eae2cb';
+      this.drawRoundedRect(ctx, sx, sy + 10 - barH / 2, sw, barH, barH / 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      const fillW = sw * val;
+      if (fillW > barH) {
+        this.drawRoundedRect(ctx, sx, sy + 10 - barH / 2, fillW, barH, barH / 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = color;
+      const thumbX = sx + sw * val;
+      ctx.beginPath();
+      ctx.arc(thumbX, sy + 10, thumbR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    };
+
+    let sectionY = dy + 62;
+
+    ctx.fillStyle = '#5f5b4d';
+    ctx.font = 'bold 15px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('♫ MUSIC', sectionX, sectionY + 12);
+
+    const musicToggleX = sectionX + contentW - toggleW;
+    hit.musicToggle = { x: musicToggleX, y: sectionY, w: toggleW, h: 24 };
+    drawToggle(musicToggleX, sectionY, this.settings.musicOn, '#993d46');
+
+    sectionY += 46;
+    hit.musicSlider = { x: sectionX, y: sectionY, w: contentW, h: 20 };
+    drawSlider(sectionX, sectionY, contentW, this.settings.musicVolume, '#993d46');
+
+    sectionY += 40;
+
+    ctx.fillStyle = '#5f5b4d';
+    ctx.font = 'bold 15px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔊 SOUND FX', sectionX, sectionY + 12);
+
+    const sfxToggleX = sectionX + contentW - toggleW;
+    hit.sfxToggle = { x: sfxToggleX, y: sectionY, w: toggleW, h: 24 };
+    drawToggle(sfxToggleX, sectionY, this.settings.sfxOn, '#296654');
+
+    sectionY += 46;
+    hit.sfxSlider = { x: sectionX, y: sectionY, w: contentW, h: 20 };
+    drawSlider(sectionX, sectionY, contentW, this.settings.sfxVolume, '#296654');
+
+    sectionY += 48;
+
+    const btnW = 180;
+    const btnH = 40;
+    const btnX = (w - btnW) / 2;
+    const btnY = sectionY;
+    hit.backBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
+    ctx.save();
+    ctx.translate(btnX + btnW / 2, btnY + btnH / 2);
+    ctx.rotate(-1 * Math.PI / 180);
+    ctx.translate(-(btnX + btnW / 2), -(btnY + btnH / 2));
+    ctx.fillStyle = '#322f22';
+    this.drawRoundedRect(ctx, btnX + 3, btnY + 3, btnW, btnH, btnH / 2);
+    ctx.fill();
+    ctx.fillStyle = '#fdd1b4';
+    ctx.strokeStyle = '#322f22';
+    ctx.lineWidth = 3;
+    this.drawRoundedRect(ctx, btnX, btnY, btnW, btnH, btnH / 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#322f22';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('BACK', btnX + btnW / 2, btnY + btnH / 2);
+    ctx.restore();
+
+    ctx.restore();
+    this._settingsHitAreas = hit;
+  }
+
+  handleSettingsTouch(x, y) {
+    const hit = this._settingsHitAreas;
+
+    if (hit.close && x >= hit.close.x && x <= hit.close.x + hit.close.w &&
+        y >= hit.close.y && y <= hit.close.y + hit.close.h) {
+      this.showingSettings = false;
+      this._settingsHitAreas = {};
+      return true;
+    }
+
+    if (hit.backBtn && x >= hit.backBtn.x && x <= hit.backBtn.x + hit.backBtn.w &&
+        y >= hit.backBtn.y && y <= hit.backBtn.y + hit.backBtn.h) {
+      this.showingSettings = false;
+      this._settingsHitAreas = {};
+      return true;
+    }
+
+    if (hit.dialog && (x < hit.dialog.x || x > hit.dialog.x + hit.dialog.w ||
+        y < hit.dialog.y || y > hit.dialog.y + hit.dialog.h)) {
+      this.showingSettings = false;
+      this._settingsHitAreas = {};
+      return true;
+    }
+
+    if (hit.musicToggle && x >= hit.musicToggle.x && x <= hit.musicToggle.x + hit.musicToggle.w &&
+        y >= hit.musicToggle.y && y <= hit.musicToggle.y + hit.musicToggle.h) {
+      this.settings.musicOn = !this.settings.musicOn;
+      if (this.cover && this.cover.bgm) {
+        if (this.settings.musicOn && this.cover.bgm.paused) {
+          this.cover.bgm.play();
+        } else if (!this.settings.musicOn) {
+          this.cover.bgm.pause();
+        }
+      }
+      if (this.musicManager) {
+        this.musicManager.setOn(this.settings.musicOn);
+      }
+      this.saveSettings();
+      return true;
+    }
+
+    if (hit.musicSlider && x >= hit.musicSlider.x && x <= hit.musicSlider.x + hit.musicSlider.w &&
+        y >= hit.musicSlider.y && y <= hit.musicSlider.y + hit.musicSlider.h) {
+      const vol = Math.max(0, Math.min(1, (x - hit.musicSlider.x) / hit.musicSlider.w));
+      this.settings.musicVolume = vol;
+      if (this.cover && this.cover.bgm) {
+        this.cover.bgm.volume = vol;
+      }
+      if (this.musicManager) {
+        this.musicManager.setVolume(vol);
+      }
+      this.saveSettings();
+      return true;
+    }
+
+    if (hit.sfxToggle && x >= hit.sfxToggle.x && x <= hit.sfxToggle.x + hit.sfxToggle.w &&
+        y >= hit.sfxToggle.y && y <= hit.sfxToggle.y + hit.sfxToggle.h) {
+      this.settings.sfxOn = !this.settings.sfxOn;
+      this.saveSettings();
+      return true;
+    }
+
+    if (hit.sfxSlider && x >= hit.sfxSlider.x && x <= hit.sfxSlider.x + hit.sfxSlider.w &&
+        y >= hit.sfxSlider.y && y <= hit.sfxSlider.y + hit.sfxSlider.h) {
+      const vol = Math.max(0, Math.min(1, (x - hit.sfxSlider.x) / hit.sfxSlider.w));
+      this.settings.sfxVolume = vol;
+      this.saveSettings();
+      return true;
+    }
+
+    return true;
+  }
+
+  drawRoundedRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
   }
 
   findMyRank() {

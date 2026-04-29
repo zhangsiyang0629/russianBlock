@@ -744,6 +744,12 @@ export default class Main {
     if (!this.rankPanel) {
       this.rankPanel = new RankPanel(this.ctx, this.playerData, () => {
         this.closeRankPanel();
+      }, {
+        cover: this.cover,
+        musicManager: this.musicManager,
+        onPlay: () => {
+          this.closeRankPanel();
+        },
       });
     }
     
