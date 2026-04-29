@@ -27,7 +27,7 @@ function getDefaultNickname() {
 }
 
 function getDefaultAvatar() {
-  return 'images/default-avatar.png';
+  return 'subpackages/images/mike.png';
 }
 
 /**
@@ -213,8 +213,8 @@ async function syncRanking(fields = {}) {
     if (!playerData) return;
     
     const rankingData = {
-      nickname: playerData.nickname,
-      avatarUrl: playerData.avatarUrl,
+      nickname: fields.nickname || playerData.nickname,
+      avatarUrl: fields.avatarUrl || playerData.avatarUrl,
       highScore: fields.highScore !== undefined ? fields.highScore : playerData.highScore,
       level: fields.level !== undefined ? fields.level : playerData.level,
     };

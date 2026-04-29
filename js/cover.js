@@ -1175,7 +1175,7 @@ export default class Cover {
     this.active = true;
     if (this.bgm) {
       if (this.bgm.src) {
-        if (this.bgm.paused) {
+        if (this.bgm.paused && this.settings.musicOn) {
           this.bgm.play();
         }
       } else {

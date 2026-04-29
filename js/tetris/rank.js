@@ -57,11 +57,52 @@ export default class RankPanel {
     this.touchStartScroll = 0;
     this.myRankData = null;
 
+    this.avatarImages = {};
+
     this.tabButtons = [
       { id: 'score', text: '分数榜', x: 0, y: 0, w: 0, h: TAB_HEIGHT },
       { id: 'level', text: '关卡榜', x: 0, y: 0, w: 0, h: TAB_HEIGHT },
     ];
     this.backButton = { x: 0, y: 0, w: 44, h: 44 };
+  }
+
+  loadAvatarImage(url) {
+    if (!url || this.avatarImages[url] !== undefined) return;
+    if (typeof wx === 'undefined' || !wx.createImage) return;
+    this.avatarImages[url] = null;
+    const img = wx.createImage();
+    img.onload = () => { this.avatarImages[url] = img; };
+    img.onerror = () => { this.avatarImages[url] = false; };
+    img.src = url;
+  }
+
+  loadAvatarsForData(data) {
+    for (const item of data) {
+      if (item.avatarUrl) this.loadAvatarImage(item.avatarUrl);
+    }
+    if (this.playerData && this.playerData.avatarUrl) {
+      this.loadAvatarImage(this.playerData.avatarUrl);
+    }
+  }
+
+  drawAvatar(ctx, cx, cy, r, url) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    const img = url ? this.avatarImages[url] : undefined;
+    if (img && typeof img !== 'boolean') {
+      ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
+    } else {
+      ctx.fillStyle = COLORS.onSurfaceVariant;
+      ctx.font = `${r * 1.2}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('👤', cx, cy + 2);
+    }
+    ctx.restore();
   }
 
   async show(tab = 'score') {
@@ -73,6 +114,7 @@ export default class RankPanel {
     this.isLoading = true;
     this.scrollOffset = 0;
     this.myRankData = null;
+    this.avatarImages = {};
 
     await this.loadPage();
   }
@@ -91,6 +133,7 @@ export default class RankPanel {
       this.hasMore = data.hasMore;
       this.currentSkip += ITEMS_PER_PAGE;
       this.updateMaxScrollOffset();
+      this.loadAvatarsForData(data.data);
     } catch (err) {
       console.error('加载排行榜数据失败:', err);
     } finally {
@@ -105,8 +148,11 @@ export default class RankPanel {
     }
     try {
       const db = wx.cloud.database();
+      const _ = db.command;
       const orderField = type === 'score' ? 'highScore' : 'level';
+      const filter = type === 'score' ? { highScore: _.gt(0) } : { level: _.gt(1) };
       const res = await db.collection('rankings')
+        .where(filter)
         .orderBy(orderField, 'desc')
         .orderBy('updateTime', 'asc')
         .skip(skip)
@@ -131,7 +177,7 @@ export default class RankPanel {
         nickname: `玩家${rank}`,
         avatarUrl: '',
         highScore: Math.floor(Math.random() * 100000) + 5000,
-        level: Math.floor(Math.random() * 30) + 1,
+        level: Math.floor(Math.random() * 29) + 2,
       });
     }
     mockData.sort((a, b) => {
@@ -332,18 +378,16 @@ export default class RankPanel {
     ctx.save();
     ctx.beginPath();
     ctx.arc(w / 2, centerY - 22, 25, 0, Math.PI * 2);
+    ctx.closePath();
     ctx.fillStyle = COLORS.secondaryContainer;
     ctx.lineWidth = 2;
     ctx.strokeStyle = COLORS.onSurface;
     ctx.fill();
     ctx.stroke();
-
-    ctx.fillStyle = COLORS.onSurfaceVariant;
-    ctx.font = '18px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('👤', w / 2, centerY - 22);
     ctx.restore();
+
+    const avatarUrl = topPlayer ? topPlayer.avatarUrl : null;
+    this.drawAvatar(ctx, w / 2, centerY - 22, 25, avatarUrl);
 
     const name = topPlayer ? topPlayer.nickname : '---';
     ctx.fillStyle = COLORS.onSurface;
@@ -490,21 +534,21 @@ export default class RankPanel {
 
     const avatarX = marginX + 48;
     const avatarSize = 36;
+    const avatarR = avatarSize / 2;
     const avatarY = y + (ITEM_HEIGHT - avatarSize) / 2;
+    const avatarCx = avatarX + avatarR;
+    const avatarCy = avatarY + avatarR;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+    ctx.arc(avatarCx, avatarCy, avatarR, 0, Math.PI * 2);
+    ctx.closePath();
     ctx.fillStyle = COLORS.tertiaryContainer;
     ctx.strokeStyle = COLORS.onSurface;
     ctx.lineWidth = 1.5;
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = COLORS.onSurfaceVariant;
-    ctx.font = '16px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('👤', avatarX + avatarSize / 2, avatarY + avatarSize / 2);
     ctx.restore();
+    this.drawAvatar(ctx, avatarCx, avatarCy, avatarR, item.avatarUrl);
 
     const textX = avatarX + avatarSize + 10;
     ctx.fillStyle = COLORS.onSurface;
@@ -556,21 +600,22 @@ export default class RankPanel {
 
     const avatarX = marginX + 50;
     const avatarSize = 36;
+    const avatarR = avatarSize / 2;
     const avatarY = py + (BOTTOM_PLAYER_HEIGHT - avatarSize) / 2;
+    const avatarCx = avatarX + avatarR;
+    const avatarCy = avatarY + avatarR;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+    ctx.arc(avatarCx, avatarCy, avatarR, 0, Math.PI * 2);
+    ctx.closePath();
     ctx.fillStyle = COLORS.outlineVariant;
     ctx.strokeStyle = COLORS.outline;
     ctx.lineWidth = 1.5;
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = COLORS.surface;
-    ctx.font = '18px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('👤', avatarX + avatarSize / 2, avatarY + avatarSize / 2);
     ctx.restore();
+    const myAvatarUrl = this.playerData ? this.playerData.avatarUrl : null;
+    this.drawAvatar(ctx, avatarCx, avatarCy, avatarR, myAvatarUrl);
 
     const textX = avatarX + avatarSize + 10;
     const nick = this.playerData ? this.playerData.nickname : '我';

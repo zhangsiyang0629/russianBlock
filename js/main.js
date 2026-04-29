@@ -658,31 +658,28 @@ export default class Main {
    * 处理排行榜入口点击（含授权流程）
    * @param {'score'|'level'} tab
    */
-  async handleRankEntry(tab) {
+  handleRankEntry(tab) {
     console.log(`打开排行榜: ${tab}`);
     
-    // 1. 检查隐私授权
-    const privacyOk = await this.ensurePrivacyAuthorized();
-    if (!privacyOk) {
-      console.warn('隐私授权检查失败，仍继续打开排行榜');
-    }
+    // 立即显示排行榜，后台并行加载数据
+    this.openRankPanel(tab);
     
-    // 2. 尝试获取用户信息（不阻塞）
+    // 以下操作后台并行执行
     if (!this.userInfoBound && typeof wx !== 'undefined' && !isDebugMode) {
       this.tryBindUserInfo();
     }
     
-    // 3. 加载玩家数据
-    try {
-      if (!this.playerData) {
-        this.playerData = await getOrCreatePlayerData();
-      }
-    } catch (err) {
-      console.warn('加载玩家数据失败:', err);
-    }
+    this.ensurePrivacyAuthorized().then(ok => {
+      if (!ok) console.warn('隐私授权检查失败');
+    });
     
-    // 4. 打开排行榜
-    this.openRankPanel(tab);
+    if (!this.playerData) {
+      getOrCreatePlayerData().then(data => {
+        this.playerData = data;
+      }).catch(err => {
+        console.warn('加载玩家数据失败:', err);
+      });
+    }
   }
   
   /**
@@ -734,14 +731,14 @@ export default class Main {
       });
     }
     
-    await this.rankPanel.show(tab);
-    
+    // 先切换状态、隐藏封面，再异步加载数据，避免卡在封面
     this.currentState = 'rank';
     
-    // 隐藏封面
     if (this.cover) {
       this.cover.hide();
     }
+    
+    this.rankPanel.show(tab);
   }
   
   /**
