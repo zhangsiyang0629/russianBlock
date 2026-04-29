@@ -28,6 +28,7 @@ const COLORS = {
 };
 
 import { drawRoundedRect } from './utils.js';
+import Effects from './effects.js';
 
 const ITEMS_PER_PAGE = 10;
 const MAX_RANK = 3000;
@@ -64,6 +65,8 @@ export default class RankPanel {
     this.settings = { musicOn: true, musicVolume: 0.5, sfxOn: true, sfxVolume: 0.5 };
     this._settingsHitAreas = {};
     this.loadSettings();
+
+    this.effects = new Effects();
 
     this.avatarImages = {};
 
@@ -131,6 +134,7 @@ export default class RankPanel {
     this.currentSkip = 0;
     this.hasMore = true;
     this.showingSettings = false;
+    this.effects.clear();
     this.isLoading = true;
     this.scrollOffset = 0;
     this.avatarImages = {};
@@ -140,6 +144,7 @@ export default class RankPanel {
 
   hide() {
     this.active = false;
+    this.effects.clear();
   }
 
   async loadPage() {
@@ -255,6 +260,8 @@ export default class RankPanel {
   handleTouchEnd(x, y) {
     if (!this.active) return;
 
+    this.effects.createClickRipple(x, y);
+
     if (this.showingSettings) {
       return this.handleSettingsTouch(x, y);
     }
@@ -333,6 +340,8 @@ export default class RankPanel {
     const w = canvas.width;
     const h = canvas.height;
 
+    this.effects.tick(w, h);
+
     ctx.clearRect(0, 0, w, h);
     this.drawPaperBackground(ctx, w, h);
     this.drawTopBar(ctx, w);
@@ -340,11 +349,14 @@ export default class RankPanel {
     this.drawTabs(ctx, w);
     this.drawList(ctx, w);
     this.drawBottomPlayer(ctx, w, h);
+    this.effects.renderFireworks(ctx);
     this.drawBottomNav(ctx, w, h);
 
     if (this.showingSettings) {
       this.renderSettingsDialog();
     }
+
+    this.effects.renderClickRipples(ctx);
   }
 
   drawPaperBackground(ctx, w, h) {

@@ -4,6 +4,7 @@
  */
 import { initCloud } from './tetris/playerData';
 import { drawRoundedRect } from './tetris/utils';
+import Effects from './tetris/effects';
 
 export default class Cover {
   constructor(ctx, getEnergyInfo = null, onPrivacyAction = null, musicManager = null) {
@@ -14,6 +15,9 @@ export default class Cover {
     // 封面状态
     this.active = true;
     this.resourcesLoaded = false;
+
+    // 封面特效
+    this.effects = new Effects();
     
     // 图片资源
     this.characterImage = null;
@@ -471,8 +475,11 @@ export default class Cover {
     const width = canvas.width;
     const height = canvas.height;
 
+    this.effects.tick(width, height);
+
     ctx.clearRect(0, 0, width, height);
     this.drawPaperTexture();
+    this.effects.renderFireworks(ctx);
     this.drawDecorativeBlocks();
     this.drawEnergyInfo();
     this.drawCharacterSection();
@@ -483,6 +490,8 @@ export default class Cover {
     if (this.showingSettings) {
       this.renderSettings();
     }
+
+    this.effects.renderClickRipples(ctx);
   }
   
   /**
@@ -952,11 +961,11 @@ export default class Cover {
   handleClick(x, y) {
     if (!this.active) return null;
 
+    this.effects.createClickRipple(x, y);
+
     if (this.showingSettings) {
       return this.handleSettingsClick(x, y);
     }
-    
-    console.log(`点击坐标: x=${x}, y=${y}, canvas=${this.canvas.width}x${this.canvas.height}`);
     
 
     
@@ -1155,6 +1164,7 @@ export default class Cover {
    */
   hide(stopBgm = false) {
     this.active = false;
+    this.effects.clear();
     this.bgmPendingPlay = false;
     if (stopBgm && this.bgm) {
       this.bgm.stop();
