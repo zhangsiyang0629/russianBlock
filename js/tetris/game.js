@@ -185,6 +185,7 @@ export default class TetrisGame {
     
     // 暂停按钮
     this.pauseButton = { x: 0, y: 0, width: 0, height: 0 };
+    this._gameOverButtons = [];
     
     // 重新开始弹窗状态
     this.restartButton = {
@@ -690,28 +691,24 @@ export default class TetrisGame {
       }
     }
     
-    // 检查是否点击了重新开始按钮
     if (this.gameOver) {
-      const { x: btnX, y: btnY, width, height, visible } = this.restartButton;
-      if (width > 0 && height > 0 && x >= btnX && x <= btnX + width && y >= btnY && y <= btnY + height) {
-        console.log('点击重新开始按钮', x, y, btnX, btnY, width, height);
-        this.restart();
-        return;
+      for (const btn of this._gameOverButtons) {
+        if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) {
+          console.log(`点击游戏结束按钮: ${btn.id}`, x, y);
+          if (btn.id === 'revive') {
+            this.reviveByAd();
+          } else if (btn.id === 'restart') {
+            if (this.onRestart) {
+              this.onRestart();
+            } else {
+              this.restart();
+            }
+          } else if (btn.id === 'quit') {
+            if (this.onQuit) this.onQuit();
+          }
+          return;
+        }
       }
-    }
-    
-    // 检查是否点击了复活按钮
-    if (this.gameOver && !this.reviveUsed) {
-      const { x: btnX, y: btnY, width, height, visible } = this.reviveButton;
-      if (width > 0 && height > 0 && x >= btnX && x <= btnX + width && y >= btnY && y <= btnY + height) {
-        console.log('点击复活按钮', x, y, btnX, btnY, width, height);
-        this.reviveByAd();
-        return;
-      }
-    }
-    
-    // 游戏结束时，不处理游戏操作
-    if (this.gameOver) {
       console.log('游戏结束但未点击按钮', x, y);
       return;
     }
@@ -1291,104 +1288,89 @@ export default class TetrisGame {
     else if (this.gameOver) {
       const adHeight = this.adManager.getAdHeight();
       const canvas = ctx.canvas;
-      
-      // 半透明覆盖层（只覆盖游戏区域，不覆盖广告区域）
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(0, adHeight, canvas.width, canvas.height - adHeight);
-      
-      // 弹窗尺寸和位置
-      const popupWidth = canvas.width * 0.7;
-      const popupHeight = 330; // 增加高度以容纳最高分文字和两个按钮
-      const popupX = (canvas.width - popupWidth) / 2;
-      const popupY = adHeight + (canvas.height - adHeight - popupHeight) / 2;
-      
-      // 弹窗背景
-      ctx.fillStyle = COLORS.surfaceContainer;
-      ctx.fillRect(popupX, popupY, popupWidth, popupHeight);
-      
-      // 弹窗边框
-      ctx.strokeStyle = COLORS.primary;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(popupX, popupY, popupWidth, popupHeight);
-      
-      // 弹窗标题
-      ctx.fillStyle = COLORS.onSurface;
-      ctx.font = 'bold 32px Arial';
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, adHeight, w, h - adHeight);
+
+      const dw = 260;
+      const padding = 24;
+      const titleH = 28;
+      const textBlockH = 50;
+      const btnW = 200;
+      const btnH = 44;
+      const btnGap = 12;
+      const btnCount = this.reviveUsed ? 2 : 3;
+      const btnsTotal = btnCount * btnH + (btnCount - 1) * btnGap;
+      const dh = padding * 2 + titleH + 14 + textBlockH + 10 + btnsTotal;
+      const dx = (w - dw) / 2;
+      const dy = adHeight + (h - adHeight - dh) / 2;
+      const btnX = dx + (dw - btnW) / 2;
+      const btnStartY = dy + padding + titleH + 14 + textBlockH + 10;
+
+      this._gameOverButtons = [];
+
+      ctx.save();
+      ctx.translate(dx + dw / 2, dy + dh / 2);
+      ctx.rotate(-1 * Math.PI / 180);
+      ctx.translate(-(dx + dw / 2), -(dy + dh / 2));
+      ctx.fillStyle = '#fffcf5';
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 4;
+      drawRoundedRect(ctx, dx, dy, dw, dh, 18);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.fillStyle = '#322f22';
+      ctx.font = 'bold 24px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('游戏结束', popupX + popupWidth / 2, popupY + 50);
-      
-      // 最终分数
-      ctx.font = '24px Arial';
-      ctx.fillText(`最终分数: ${this.score}`, popupX + popupWidth / 2, popupY + 100);
-      
-      // 最高分
-      ctx.font = '18px Arial';
-      ctx.fillStyle = COLORS.onSurfaceVariant;
-      ctx.fillText(`最高分: ${this.highScore}`, popupX + popupWidth / 2, popupY + 130);
-      
-      // 按钮尺寸
-      const buttonWidth = 180;
-      const buttonHeight = 50;
-      const buttonX = popupX + (popupWidth - buttonWidth) / 2;
-      const buttonSpacing = 20; // 按钮间距
-      
-      // 复活按钮（上方）
-      const reviveButtonY = popupY + 155;
-      const reviveButtonColor = this.reviveUsed ? COLORS.outlineVariant : COLORS.secondary; // 已使用则为灰色
-      const reviveButtonBorderColor = this.reviveUsed ? COLORS.outline : COLORS.secondaryContainer;
-      
-      // 按钮背景
-      ctx.fillStyle = reviveButtonColor;
-      ctx.fillRect(buttonX, reviveButtonY, buttonWidth, buttonHeight);
-      
-      // 按钮边框
-      ctx.strokeStyle = reviveButtonBorderColor;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(buttonX, reviveButtonY, buttonWidth, buttonHeight);
-      
-      // 按钮文字
-      ctx.fillStyle = COLORS.onSecondary;
-      ctx.font = 'bold 22px Arial';
-      const reviveButtonText = this.reviveUsed ? '已使用复活' : '看广告复活';
-      ctx.fillText(reviveButtonText, buttonX + buttonWidth / 2, reviveButtonY + buttonHeight / 2 + 3);
-      
-      // 保存复活按钮位置
-      this.reviveButton.x = buttonX;
-      this.reviveButton.y = reviveButtonY;
-      this.reviveButton.width = buttonWidth;
-      this.reviveButton.height = buttonHeight;
-      this.reviveButton.visible = true;
-      
-      // 重新开始按钮（下方）
-      const restartButtonY = reviveButtonY + buttonHeight + buttonSpacing;
-      
-      // 按钮背景
-      ctx.fillStyle = COLORS.primary;
-      ctx.fillRect(buttonX, restartButtonY, buttonWidth, buttonHeight);
-      
-      // 按钮边框
-      ctx.strokeStyle = COLORS.primaryContainer;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(buttonX, restartButtonY, buttonWidth, buttonHeight);
-      
-      // 按钮文字
-      ctx.fillStyle = COLORS.onPrimary;
-      ctx.font = 'bold 22px Arial';
-      ctx.fillText('重新开始', buttonX + buttonWidth / 2, restartButtonY + buttonHeight / 2 + 3);
-      
-      // 保存重新开始按钮位置
-      this.restartButton.x = buttonX;
-      this.restartButton.y = restartButtonY;
-      this.restartButton.width = buttonWidth;
-      this.restartButton.height = buttonHeight;
-      this.restartButton.visible = true;
-      
-      // 键盘提示
+      ctx.textBaseline = 'middle';
+      ctx.fillText('GAME OVER', w / 2, dy + padding + titleH / 2);
+
+      ctx.fillStyle = '#322f22';
+      ctx.fillRect(w / 2 - 25, dy + padding + titleH + 6, 50, 2);
+
       ctx.font = '16px Arial';
-      ctx.fillStyle = COLORS.onSurfaceVariant;
-      ctx.fillText('或按R键重新开始', popupX + popupWidth / 2, popupY + popupHeight - 15);
-      
-      // 隐藏胜利弹窗按钮
+      ctx.fillStyle = '#5f5b4d';
+      ctx.fillText(`Score: ${this.score}    Best: ${this.highScore}`, w / 2, dy + padding + titleH + 14 + textBlockH / 2);
+
+      const gameOverBtns = this.reviveUsed
+        ? [{ id: 'restart', text: 'RESTART' }, { id: 'quit', text: 'QUIT' }]
+        : [{ id: 'revive', text: '▶ AD' }, { id: 'restart', text: 'RESTART' }, { id: 'quit', text: 'QUIT' }];
+
+      for (let i = 0; i < gameOverBtns.length; i++) {
+        const btn = gameOverBtns[i];
+        const btnY = btnStartY + i * (btnH + btnGap);
+        this._gameOverButtons.push({ id: btn.id, x: btnX, y: btnY, w: btnW, h: btnH });
+
+        ctx.save();
+        ctx.translate(btnX + btnW / 2, btnY + btnH / 2);
+        ctx.rotate(-1 * Math.PI / 180);
+        ctx.translate(-(btnX + btnW / 2), -(btnY + btnH / 2));
+
+        ctx.fillStyle = '#322f22';
+        drawRoundedRect(ctx, btnX + 3, btnY + 3, btnW, btnH, btnH / 2);
+        ctx.fill();
+
+        const btnBgColor = btn.id === 'revive' ? '#a3e1ca' : btn.id === 'restart' ? '#fdd1b4' : '#ff8c94';
+        ctx.fillStyle = btnBgColor;
+        ctx.strokeStyle = '#322f22';
+        ctx.lineWidth = 3;
+        drawRoundedRect(ctx, btnX, btnY, btnW, btnH, btnH / 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+
+        ctx.fillStyle = '#322f22';
+        ctx.font = 'bold 15px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(btn.text, btnX + btnW / 2, btnY + btnH / 2);
+      }
+
       this.victoryButton.visible = false;
     } else {
       // 游戏未结束时隐藏所有弹窗按钮
