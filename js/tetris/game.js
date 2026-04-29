@@ -147,6 +147,7 @@ export default class TetrisGame {
     
     // 初始化关卡难度配置
     this.gameOver = false;
+    this.paused = false;
     this.score = 0;
     this.level = savedLevel; // 从玩家数据加载的关卡
     this.highScore = savedHighScore; // 从玩家数据加载的最高分
@@ -181,6 +182,9 @@ export default class TetrisGame {
     
     // 输入状态
     this.keys = {};
+    
+    // 暂停按钮
+    this.pauseButton = { x: 0, y: 0, width: 0, height: 0 };
     
     // 重新开始弹窗状态
     this.restartButton = {
@@ -445,7 +449,36 @@ export default class TetrisGame {
     ctx.fillText(`STAGE ${this.level}`, scoreCardWidth / 2, scoreCardHeight - 8);
     
     ctx.restore();
-    
+
+    // 暂停按钮（分数卡片上方）
+    const pauseBtnW = scoreCardWidth;
+    const pauseBtnH = Math.floor(scoreCardHeight / 2);
+    const pauseBtnX = scoreCardX;
+    const pauseBtnY = scoreCardY - pauseBtnH - 6;
+    this.pauseButton = { x: pauseBtnX, y: pauseBtnY, width: pauseBtnW, height: pauseBtnH };
+
+    ctx.save();
+    ctx.translate(pauseBtnX + pauseBtnW / 2, pauseBtnY + pauseBtnH / 2);
+    ctx.rotate(-2 * Math.PI / 180);
+    ctx.translate(-pauseBtnW / 2, -pauseBtnH / 2);
+
+    ctx.fillStyle = COLORS.onBackground;
+    ctx.fillRect(4, 4, pauseBtnW, pauseBtnH);
+
+    ctx.fillStyle = this.paused ? COLORS.primary : COLORS.tertiaryContainer;
+    ctx.fillRect(0, 0, pauseBtnW, pauseBtnH);
+
+    ctx.strokeStyle = COLORS.onBackground;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, pauseBtnW, pauseBtnH);
+
+    ctx.fillStyle = COLORS.onSurface;
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.paused ? '▶' : '❚❚', pauseBtnW / 2, pauseBtnH / 2);
+    ctx.restore();
+
     // 最高分显示（分数卡片下方）
     ctx.save();
     ctx.fillStyle = COLORS.onSurfaceVariant;
@@ -622,6 +655,13 @@ export default class TetrisGame {
       console.log('触摸被广告区域拦截', x, y);
       return; // 广告被点击，不处理游戏操作
     }
+
+    // 暂停状态下点击任意位置恢复
+    if (this.paused) {
+      this.paused = false;
+      console.log('游戏继续');
+      return;
+    }
     
     // 检查是否点击了胜利弹窗的NEXT按钮
     if (this.showVictoryPopup) {
@@ -660,6 +700,16 @@ export default class TetrisGame {
     if (this.gameOver) {
       console.log('游戏结束但未点击按钮', x, y);
       return;
+    }
+
+    // 检查暂停按钮
+    if (!this.showVictoryPopup) {
+      const pb = this.pauseButton;
+      if (x >= pb.x && x <= pb.x + pb.width && y >= pb.y && y <= pb.y + pb.height) {
+        this.paused = !this.paused;
+        // console.log(this.paused ? '游戏暂停' : '游戏继续');
+        return;
+      }
     }
     
     // 检查是否点击了控制按钮
@@ -854,7 +904,7 @@ export default class TetrisGame {
     // 更新广告状态（无论游戏状态如何）
     this.adManager.update(this.lastTime);
     
-    if (this.gameOver || this.showVictoryPopup) return;
+    if (this.gameOver || this.paused || this.showVictoryPopup) return;
     
     this.handleInput();
     
@@ -962,6 +1012,17 @@ export default class TetrisGame {
 
     // 渲染死亡动画
     this.pengfuAnimation.render(ctx);
+
+    if (this.paused) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.font = '60px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('❚❚', canvas.width / 2, canvas.height / 2);
+    }
   }
 
   /**
@@ -1305,6 +1366,7 @@ export default class TetrisGame {
     this.currentBlock = null;
     this.nextBlock = null;
     this.gameOver = false;
+    this.paused = false;
     this.score = 0;
     this.level = savedLevel || this.level;
     this.highScore = savedHighScore || this.highScore;
