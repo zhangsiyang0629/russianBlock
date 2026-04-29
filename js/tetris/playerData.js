@@ -3,6 +3,7 @@ const CLOUD_ENV = 'cloudbase-d5gyz0rzwf3c9a078';
 const LOCAL_STORAGE_KEY = 'playerData';
 
 let cloudInitialized = false;
+let cachedOpenId = null;
 
 function initCloud() {
   if (cloudInitialized) return true;
@@ -19,6 +20,21 @@ function initCloud() {
     console.error('云开发初始化失败:', err);
     return false;
   }
+}
+
+async function getOpenId() {
+  if (cachedOpenId) return cachedOpenId;
+  if (typeof wx === 'undefined' || !wx.cloud) return null;
+  try {
+    const res = await wx.cloud.callFunction({ name: 'login' });
+    if (res.result && res.result.openid) {
+      cachedOpenId = res.result.openid;
+      return cachedOpenId;
+    }
+  } catch (err) {
+    console.warn('获取 openid 失败:', err);
+  }
+  return null;
 }
 
 function getDefaultNickname() {
@@ -72,16 +88,18 @@ async function getOrCreatePlayerData() {
   if (initCloud()) {
     try {
       const db = wx.cloud.database();
-      
+      const openid = await getOpenId();
+      if (!openid) throw new Error('无法获取 openid');
+
       const result = await db.collection('player_data').where({
-        _openid: '{openid}'
+        _openid: openid
       }).get();
-      
-       if (result.data.length > 0) {
-         const playerData = result.data[0];
-         await ensureEnergyFields(db, playerData);
-         return playerData;
-       }
+
+      if (result.data.length > 0) {
+        const playerData = result.data[0];
+        await ensureEnergyFields(db, playerData);
+        return playerData;
+      }
       
       const defaultData = {
         nickname: getDefaultNickname(),
@@ -138,9 +156,11 @@ async function updatePlayerData(updateFields) {
   if (initCloud()) {
     try {
       const db = wx.cloud.database();
-      
+      const openid = await getOpenId();
+      if (!openid) throw new Error('无法获取 openid');
+
       const result = await db.collection('player_data').where({
-        _openid: '{openid}'
+        _openid: openid
       }).get();
       
       if (result.data.length > 0) {
@@ -221,8 +241,10 @@ async function syncRanking(fields = {}) {
     
     if (typeof wx !== 'undefined' && wx.cloud) {
       const db = wx.cloud.database();
+      const openid = cachedOpenId || await getOpenId();
+      if (!openid) return;
       const existRes = await db.collection('rankings')
-        .where({ _openid: '{openid}' })
+        .where({ _openid: openid })
         .get();
       if (existRes.data.length > 0) {
         await db.collection('rankings').doc(existRes.data[0]._id).update({
