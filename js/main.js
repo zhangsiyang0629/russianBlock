@@ -559,6 +559,16 @@ export default class Main {
       // 创建游戏实例
       if (!this.game) {
         this.game = new TetrisGame(this.ctx, this.savedLevel, this.savedHighScore, this.musicManager);
+        this.game.onQuit = () => {
+          this.returnToCover();
+        };
+        this.game.onRestart = () => {
+          if (!this.energyManager.hasEnoughEnergy()) {
+            return;
+          }
+          this.energyManager.consumeEnergy();
+          this.game.restart();
+        };
         this.game.start();
       } else {
         this.game.restart(this.savedLevel, this.savedHighScore);

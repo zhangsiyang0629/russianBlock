@@ -656,10 +656,24 @@ export default class TetrisGame {
       return; // 广告被点击，不处理游戏操作
     }
 
-    // 暂停状态下点击任意位置恢复
     if (this.paused) {
-      this.paused = false;
-      console.log('游戏继续');
+      for (const btn of this._pauseMenuButtons || []) {
+        if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) {
+          if (btn.id === 'continue') {
+            this.paused = false;
+            console.log('游戏继续');
+          } else if (btn.id === 'restart') {
+            if (this.onRestart) {
+              this.onRestart();
+            } else {
+              this.restart();
+            }
+          } else if (btn.id === 'quit') {
+            if (this.onQuit) this.onQuit();
+          }
+          return;
+        }
+      }
       return;
     }
     
@@ -1014,20 +1028,95 @@ export default class TetrisGame {
     this.pengfuAnimation.render(ctx);
 
     if (this.paused) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.font = '60px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('❚❚', canvas.width / 2, canvas.height / 2);
+      this.renderPauseMenu();
     }
   }
 
   /**
    * 渲染底部控制按钮
    */
+  renderPauseMenu() {
+    const ctx = this.ctx;
+    const canvas = ctx.canvas;
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, w, h);
+
+    const dw = 260;
+    const padding = 28;
+    const titleH = 28;
+    const btnW = 200;
+    const btnH = 48;
+    const btnGap = 14;
+    const contentH = titleH + 24 + btnH * 3 + btnGap * 2;
+    const dh = padding * 2 + contentH;
+    const dx = (w - dw) / 2;
+    const dy = (h - dh) / 2;
+    const btnX = dx + (dw - btnW) / 2;
+    const btnStartY = dy + padding + titleH + 24;
+
+    ctx.save();
+    ctx.translate(dx + dw / 2, dy + dh / 2);
+    ctx.rotate(-1 * Math.PI / 180);
+    ctx.translate(-(dx + dw / 2), -(dy + dh / 2));
+    ctx.fillStyle = '#fffcf5';
+    ctx.strokeStyle = '#322f22';
+    ctx.lineWidth = 4;
+    drawRoundedRect(ctx, dx, dy, dw, dh, 18);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = '#322f22';
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('PAUSED', w / 2, dy + padding + titleH / 2);
+
+    ctx.fillStyle = '#322f22';
+    ctx.fillRect(w / 2 - 30, dy + padding + titleH + 8, 60, 2);
+
+    const buttons = [
+      { id: 'continue', text: 'CONTINUE' },
+      { id: 'restart', text: 'RESTART' },
+      { id: 'quit', text: 'QUIT' },
+    ];
+
+    this._pauseMenuButtons = [];
+
+    for (let i = 0; i < buttons.length; i++) {
+      const btn = buttons[i];
+      const btnY = btnStartY + i * (btnH + btnGap);
+      this._pauseMenuButtons.push({ id: btn.id, x: btnX, y: btnY, w: btnW, h: btnH });
+
+      ctx.save();
+      ctx.translate(btnX + btnW / 2, btnY + btnH / 2);
+      ctx.rotate(-1 * Math.PI / 180);
+      ctx.translate(-(btnX + btnW / 2), -(btnY + btnH / 2));
+
+      ctx.fillStyle = '#322f22';
+      drawRoundedRect(ctx, btnX + 3, btnY + 3, btnW, btnH, btnH / 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#fdd1b4';
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 3;
+      drawRoundedRect(ctx, btnX, btnY, btnW, btnH, btnH / 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+
+      ctx.fillStyle = '#322f22';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(btn.text, btnX + btnW / 2, btnY + btnH / 2);
+    }
+  }
+
   renderControlButtons() {
     const { ctx } = this;
     const canvas = ctx.canvas;
