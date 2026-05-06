@@ -6,6 +6,7 @@ import AdManager from './ad.js';
 import PengfuAnimation from './animation.js';
 import { saveOnLevelComplete, saveOnGameOver } from './playerData.js';
 import { drawRoundedRect } from './utils.js';
+import { EventScheduler, EVENT_CONFUSION, registerEvent, getEventHandler } from './events.js';
 
 // 设计系统颜色（来自Google Stitch原型）
 const COLORS = {
@@ -197,16 +198,29 @@ export default class TetrisGame {
     
     // 动画实例
     this.pengfuAnimation = new PengfuAnimation();
-    
+
+    // 事件系统
+    this.eventScheduler = new EventScheduler(this.level);
+    this.nextBlockConfused = false;
+    this.smokeImage = null;
+    this.smokeParticles = [];
+    if (typeof wx !== 'undefined' && wx.createImage) {
+      const img = wx.createImage();
+      img.onload = () => { this.smokeImage = img; };
+      img.src = 'subpackages/images/smoke.png';
+    }
+    if (!getEventHandler(EVENT_CONFUSION)) {
+      registerEvent(EVENT_CONFUSION, () => { this.nextBlockConfused = true; });
+    }
+
     // 初始化
     this.init();
   }
 
   init() {
     this.createNewBlock();
-    // 输入事件和游戏循环由外部控制
   }
-  
+
   /**
    * 根据关卡编号计算难度配置
    * @param {number} level - 关卡编号（从1开始）
@@ -320,6 +334,9 @@ export default class TetrisGame {
       this.currentBlock = new Tetromino(Tetromino.randomType());
       this.currentBlock.setPosition(Math.floor(this.grid.cols / 2) - 2, 0);
     }
+    
+    this.currentBlock.confused = this.nextBlockConfused;
+    this.nextBlockConfused = false;
     
     this.nextBlock = new Tetromino(Tetromino.randomType());
     
@@ -747,6 +764,10 @@ export default class TetrisGame {
   moveBlock(dx, dy) {
     if (this.gameOver) return;
     
+    if (dy === 0 && this.currentBlock && this.currentBlock.confused) {
+      dx = -dx;
+    }
+    
     const clone = this.currentBlock.clone();
     clone.move(dx, dy);
     
@@ -813,8 +834,14 @@ export default class TetrisGame {
   lockBlock() {
     const { shape, x, y, color } = this.currentBlock;
     this.grid.placeShape(shape, x, y, color);
+
+    const eventId = this.eventScheduler.onBlockLanded();
+    console.log("eventId=", eventId)
+    if (eventId) {
+      const handler = getEventHandler(eventId);
+      if (handler) handler();
+    }
     
-    // 检查并清除完整的行
     const lines = this.grid.clearLines();
     if (lines > 0) {
       this.linesCleared += lines;
@@ -823,7 +850,6 @@ export default class TetrisGame {
       this.updateLevel();
     }
     
-    // 创建新方块
     this.createNewBlock();
   }
 
@@ -845,6 +871,7 @@ export default class TetrisGame {
       
       // 更新难度配置
       this.updateLevelConfig();
+      this.eventScheduler.reset(this.level);
       
       // 重置网格以适应新关卡
       this.resetGridForNewLevel();
@@ -880,7 +907,44 @@ export default class TetrisGame {
     if (this.gameOver || this.paused || this.showVictoryPopup) return;
     
     this.handleInput();
-    
+
+    if (this.currentBlock && this.currentBlock.confused) {
+      const cell = this.grid.cellSize;
+      const shape = this.currentBlock.getShape();
+      const cx = (this.currentBlock.x + shape[0].length / 2) * cell;
+      const cy = (this.currentBlock.y + shape.length / 2) * cell;
+      const blockW = shape[0].length * cell;
+      const blockH = shape.length * cell;
+      const spread = Math.max(blockW, blockH) * 1.2;
+
+      for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
+        const p = this.smokeParticles[i];
+        p.x += p.vx * deltaTime / 1000;
+        p.y += p.vy * deltaTime / 1000;
+        p.rotation += p.rotSpeed * deltaTime / 1000;
+        p.life -= deltaTime / p.maxLife;
+        p.vx += (Math.random() - 0.5) * 20 * deltaTime / 1000;
+        p.vy += (Math.random() - 0.5) * 20 * deltaTime / 1000;
+        if (p.life <= 0) this.smokeParticles.splice(i, 1);
+      }
+
+      if (this.smokeParticles.length < 12) {
+        this.smokeParticles.push({
+          x: cx + (Math.random() - 0.5) * spread,
+          y: cy + (Math.random() - 0.5) * spread,
+          vx: (Math.random() - 0.5) * 30,
+          vy: -(Math.random() * 20 + 10),
+          rotation: Math.random() * Math.PI * 2,
+          rotSpeed: (Math.random() - 0.5) * 2,
+          life: 1,
+          maxLife: Math.random() * 600 + 400,
+          scale: Math.random() * 0.6 + 0.5,
+        });
+      }
+    } else {
+      this.smokeParticles = [];
+    }
+
     // 更新网格动画状态
     this.grid.updateAnimation();
     
@@ -965,7 +1029,22 @@ export default class TetrisGame {
     if (this.currentBlock) {
       this.currentBlock.render(ctx, this.grid.cellSize);
     }
-    
+
+    if (this.currentBlock && this.currentBlock.confused && this.smokeImage) {
+      const cell = this.grid.cellSize;
+      const pSize = cell * 3;
+      for (const p of this.smokeParticles) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.globalAlpha = Math.max(0, p.life) * 0.55;
+        ctx.scale(p.scale, p.scale);
+        ctx.drawImage(this.smokeImage, -pSize / 2, -pSize / 2, pSize, pSize);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     // 恢复画布状态
     ctx.restore();
     
@@ -1378,6 +1457,9 @@ export default class TetrisGame {
   restart(savedLevel, savedHighScore) {
     this.level = savedLevel || this.level;
     this.updateLevelConfig();
+    this.eventScheduler.reset(this.level);
+    this.nextBlockConfused = false;
+    this.smokeParticles = [];
     this.currentBlock = null;
     this.nextBlock = null;
     this.gameOver = false;
