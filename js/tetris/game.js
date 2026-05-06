@@ -172,6 +172,11 @@ export default class TetrisGame {
 
     // 暂停按钮
     this.pauseButton = { x: 0, y: 0, width: 0, height: 0 };
+    this.settingsBtn = { x: 0, y: 0, width: 0, height: 0 };
+    this.showingGameSettings = false;
+    this.gameSettings = { musicOn: true, musicVolume: 0.5, sfxOn: true, sfxVolume: 0.5 };
+    this._gameSettingsHitAreas = {};
+    this.loadGameSettings();
     this._gameOverButtons = [];
 
     // 复活状态
@@ -249,6 +254,22 @@ export default class TetrisGame {
 
   init() {
     this.createNewBlock();
+  }
+
+  loadGameSettings() {
+    try {
+      const saved = wx.getStorageSync('coverSettings');
+      if (saved) {
+        if (typeof saved.musicOn === 'boolean') this.gameSettings.musicOn = saved.musicOn;
+        if (typeof saved.musicVolume === 'number') this.gameSettings.musicVolume = saved.musicVolume;
+        if (typeof saved.sfxOn === 'boolean') this.gameSettings.sfxOn = saved.sfxOn;
+        if (typeof saved.sfxVolume === 'number') this.gameSettings.sfxVolume = saved.sfxVolume;
+      }
+    } catch (e) {}
+  }
+
+  saveGameSettings() {
+    try { wx.setStorageSync('coverSettings', this.gameSettings); } catch (e) {}
   }
 
   /**
@@ -504,6 +525,30 @@ export default class TetrisGame {
     ctx.fillText(`BEST ${this.highScore}`, scoreCardX + scoreCardWidth / 2, scoreCardY + scoreCardHeight + 5);
     ctx.restore();
 
+    // 设置按钮（分数区域下方，与暂停按钮样式一致）
+    const setBtnW = scoreCardWidth;
+    const setBtnH = Math.floor(scoreCardHeight / 2);
+    const setBtnX = scoreCardX;
+    const setBtnY = scoreCardY + scoreCardHeight + 22;
+    this.settingsBtn = { x: setBtnX, y: setBtnY, width: setBtnW, height: setBtnH };
+    ctx.save();
+    ctx.translate(setBtnX + setBtnW / 2, setBtnY + setBtnH / 2);
+    ctx.rotate(-2 * Math.PI / 180);
+    ctx.translate(-setBtnW / 2, -setBtnH / 2);
+    ctx.fillStyle = COLORS.onBackground;
+    ctx.fillRect(4, 4, setBtnW, setBtnH);
+    ctx.fillStyle = '#eae2cb';
+    ctx.fillRect(0, 0, setBtnW, setBtnH);
+    ctx.strokeStyle = COLORS.onBackground;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, setBtnW, setBtnH);
+    ctx.fillStyle = COLORS.onSurface;
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚙', setBtnW / 2, setBtnH / 2);
+    ctx.restore();
+
     // 右侧下一个方块预览卡片（缩小1/3）
     const nextCardWidth = 67;
     const nextCardHeight = 67;
@@ -724,12 +769,48 @@ export default class TetrisGame {
       return;
     }
 
-    // 检查暂停按钮
+    if (this.showingGameSettings) {
+      const h = this._gameSettingsHitAreas;
+      if (h.close && x >= h.close.x && x <= h.close.x + h.close.w && y >= h.close.y && y <= h.close.y + h.close.h) { this.showingGameSettings = false; this._gameSettingsHitAreas = {}; return; }
+      if (h.backBtn && x >= h.backBtn.x && x <= h.backBtn.x + h.backBtn.w && y >= h.backBtn.y && y <= h.backBtn.y + h.backBtn.h) { this.showingGameSettings = false; this._gameSettingsHitAreas = {}; return; }
+      if (h.dialog && (x < h.dialog.x || x > h.dialog.x + h.dialog.w || y < h.dialog.y || y > h.dialog.y + h.dialog.h)) { this.showingGameSettings = false; this._gameSettingsHitAreas = {}; return; }
+      if (h.musicToggle && x >= h.musicToggle.x && x <= h.musicToggle.x + h.musicToggle.w && y >= h.musicToggle.y && y <= h.musicToggle.y + h.musicToggle.h) {
+        this.gameSettings.musicOn = !this.gameSettings.musicOn;
+        if (this.musicManager) this.musicManager.setOn(this.gameSettings.musicOn);
+        this.saveGameSettings();
+        return;
+      }
+      if (h.musicSlider && x >= h.musicSlider.x && x <= h.musicSlider.x + h.musicSlider.w && y >= h.musicSlider.y && y <= h.musicSlider.y + h.musicSlider.h) {
+        const vol = Math.max(0, Math.min(1, (x - h.musicSlider.x) / h.musicSlider.w));
+        this.gameSettings.musicVolume = vol;
+        if (this.musicManager) this.musicManager.setVolume(vol);
+        this.saveGameSettings();
+        return;
+      }
+      if (h.sfxToggle && x >= h.sfxToggle.x && x <= h.sfxToggle.x + h.sfxToggle.w && y >= h.sfxToggle.y && y <= h.sfxToggle.y + h.sfxToggle.h) {
+        this.gameSettings.sfxOn = !this.gameSettings.sfxOn;
+        this.saveGameSettings();
+        return;
+      }
+      if (h.sfxSlider && x >= h.sfxSlider.x && x <= h.sfxSlider.x + h.sfxSlider.w && y >= h.sfxSlider.y && y <= h.sfxSlider.y + h.sfxSlider.h) {
+        const vol = Math.max(0, Math.min(1, (x - h.sfxSlider.x) / h.sfxSlider.w));
+        this.gameSettings.sfxVolume = vol;
+        this.saveGameSettings();
+        return;
+      }
+      return;
+    }
+
     if (!this.showVictoryPopup) {
+      const sb = this.settingsBtn;
+      if (x >= sb.x && x <= sb.x + sb.width && y >= sb.y && y <= sb.y + sb.height) {
+        this.showingGameSettings = true;
+        this._gameSettingsHitAreas = {};
+        return;
+      }
       const pb = this.pauseButton;
       if (x >= pb.x && x <= pb.x + pb.width && y >= pb.y && y <= pb.y + pb.height) {
         this.paused = !this.paused;
-        // console.log(this.paused ? '游戏暂停' : '游戏继续');
         return;
       }
     }
@@ -1147,6 +1228,10 @@ export default class TetrisGame {
     if (this.paused) {
       this.renderPauseMenu();
     }
+
+    if (this.showingGameSettings) {
+      this.renderGameSettingsDialog();
+    }
   }
 
   /**
@@ -1232,6 +1317,156 @@ export default class TetrisGame {
       ctx.textBaseline = 'middle';
       ctx.fillText(btn.text, btnX + btnW / 2, btnY + btnH / 2);
     }
+  }
+
+  renderGameSettingsDialog() {
+    const ctx = this.ctx;
+    const canvas = ctx.canvas;
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, w, h);
+
+    const dw = 260;
+    const padding = 28;
+    const titleH = 28;
+    const contentW = dw - 48;
+    const toggleW = 44;
+    const toggleH = 24;
+
+    const drawToggle = (tx, ty, on, onColor) => {
+      ctx.fillStyle = on ? onColor : '#b2ad9c';
+      drawRoundedRect(ctx, tx, ty, toggleW, toggleH, toggleH / 2);
+      ctx.fill();
+      const knobX = on ? tx + toggleW - 12 - 2 : tx + 2;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(knobX + 10, ty + toggleH / 2, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    };
+
+    const drawSlider = (sx, sy, sw, val, color) => {
+      const barH = 6;
+      const thumbR = 10;
+      ctx.fillStyle = '#eae2cb';
+      drawRoundedRect(ctx, sx, sy + 10 - barH / 2, sw, barH, barH / 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      const fillW = sw * val;
+      if (fillW > barH) drawRoundedRect(ctx, sx, sy + 10 - barH / 2, fillW, barH, barH / 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(sx + sw * val, sy + 10, thumbR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    };
+
+    const secH = toggleH + 6 + 20;
+    const totalContentH = titleH + 14 + secH * 2 + 44 + 20;
+    const dh = padding * 2 + totalContentH;
+    const dx = (w - dw) / 2;
+    const dy = (h - dh) / 2;
+    const sectionX = dx + 24;
+
+    this._gameSettingsHitAreas = {};
+
+    ctx.save();
+    ctx.translate(dx + dw / 2, dy + dh / 2);
+    ctx.rotate(-1 * Math.PI / 180);
+    ctx.translate(-(dx + dw / 2), -(dy + dh / 2));
+    ctx.fillStyle = '#fffcf5';
+    ctx.strokeStyle = '#322f22';
+    ctx.lineWidth = 4;
+    drawRoundedRect(ctx, dx, dy, dw, dh, 18);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = '#322f22';
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SETTINGS', w / 2, dy + padding + titleH / 2);
+
+    ctx.fillStyle = '#322f22';
+    ctx.fillRect(w / 2 - 25, dy + padding + titleH + 8, 50, 2);
+
+    const closeSize = 30;
+    const closeX = dx + dw - closeSize - 8;
+    const closeY = dy + 6;
+    this._gameSettingsHitAreas.close = { x: closeX, y: closeY, w: closeSize, h: closeSize };
+    ctx.save();
+    ctx.fillStyle = '#f95630';
+    ctx.beginPath();
+    ctx.arc(closeX + closeSize / 2, closeY + closeSize / 2, closeSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 15px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✕', closeX + closeSize / 2, closeY + closeSize / 2);
+    ctx.restore();
+
+    let sectionY = dy + padding + titleH + 14;
+
+    ctx.fillStyle = '#5f5b4d';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('♫ MUSIC', sectionX, sectionY + toggleH / 2);
+    const mtX = sectionX + contentW - toggleW;
+    this._gameSettingsHitAreas.musicToggle = { x: mtX, y: sectionY, w: toggleW, h: toggleH };
+    drawToggle(mtX, sectionY, this.gameSettings.musicOn, '#993d46');
+    sectionY += toggleH + 6;
+    this._gameSettingsHitAreas.musicSlider = { x: sectionX, y: sectionY, w: contentW, h: 20 };
+    drawSlider(sectionX, sectionY, contentW, this.gameSettings.musicVolume, '#993d46');
+    sectionY += 20 + 14;
+
+    ctx.fillStyle = '#5f5b4d';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔊 SOUND FX', sectionX, sectionY + toggleH / 2);
+    const stX = sectionX + contentW - toggleW;
+    this._gameSettingsHitAreas.sfxToggle = { x: stX, y: sectionY, w: toggleW, h: toggleH };
+    drawToggle(stX, sectionY, this.gameSettings.sfxOn, '#296654');
+    sectionY += toggleH + 6;
+    this._gameSettingsHitAreas.sfxSlider = { x: sectionX, y: sectionY, w: contentW, h: 20 };
+    drawSlider(sectionX, sectionY, contentW, this.gameSettings.sfxVolume, '#296654');
+    sectionY += 20 + 14;
+
+    const btnW = 160;
+    const btnH = 40;
+    const btnX = (w - btnW) / 2;
+    this._gameSettingsHitAreas.backBtn = { x: btnX, y: sectionY, w: btnW, h: btnH };
+    ctx.save();
+    ctx.translate(btnX + btnW / 2, sectionY + btnH / 2);
+    ctx.rotate(-1 * Math.PI / 180);
+    ctx.translate(-(btnX + btnW / 2), -(sectionY + btnH / 2));
+    ctx.fillStyle = '#322f22';
+    drawRoundedRect(ctx, btnX + 3, sectionY + 3, btnW, btnH, btnH / 2);
+    ctx.fill();
+    ctx.fillStyle = '#fdd1b4';
+    ctx.strokeStyle = '#322f22';
+    ctx.lineWidth = 3;
+    drawRoundedRect(ctx, btnX, sectionY, btnW, btnH, btnH / 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#322f22';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('BACK', btnX + btnW / 2, sectionY + btnH / 2);
+    ctx.restore();
+
+    this._gameSettingsHitAreas.dialog = { x: dx, y: dy, w: dw, h: dh };
   }
 
   renderControlButtons() {

@@ -105,7 +105,9 @@ export default class MusicManager {
 
   setOn(on) {
     this.musicOn = on;
-    if (!on) {
+    if (on) {
+      this.playRandom();
+    } else {
       this.stop();
     }
   }
