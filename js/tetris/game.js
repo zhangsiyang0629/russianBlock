@@ -351,11 +351,12 @@ export default class TetrisGame {
   createNewBlock() {
     if (this.nextBlock) {
       this.currentBlock = this.nextBlock;
-      this.currentBlock.setPosition(3, 0);
     } else {
       this.currentBlock = new Tetromino(Tetromino.randomType());
-      this.currentBlock.setPosition(Math.floor(this.grid.cols / 2) - 2, 0);
     }
+    const shapeW = this.currentBlock.getShape()[0].length;
+    const maxX = Math.max(0, this.grid.cols - shapeW);
+    this.currentBlock.setPosition(Math.floor(Math.random() * (maxX + 1)), 0);
 
     this.currentBlock.confused = this.nextBlockConfused;
     this.nextBlockConfused = false;
