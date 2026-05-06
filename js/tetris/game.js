@@ -188,6 +188,14 @@ export default class TetrisGame {
       visible: false
     };
 
+    this.victoryQuitButton = {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      visible: false
+    };
+
     // 控制按钮状态（左移、加速、变换、右移）
     this.controlButtons = [
       { id: 'left', x: 0, y: 0, width: 0, height: 0, icon: '←', desc: '左移' },
@@ -679,15 +687,17 @@ export default class TetrisGame {
       return;
     }
 
-    // 检查是否点击了胜利弹窗的NEXT按钮
     if (this.showVictoryPopup) {
-      const { x: btnX, y: btnY, width, height, visible } = this.victoryButton;
-      if (width > 0 && height > 0 && x >= btnX && x <= btnX + width && y >= btnY && y <= btnY + height) {
-        console.log('点击胜利弹窗NEXT按钮', x, y, btnX, btnY, width, height);
+      let hit = false;
+      if (this.victoryButton.width > 0 && x >= this.victoryButton.x && x <= this.victoryButton.x + this.victoryButton.width && y >= this.victoryButton.y && y <= this.victoryButton.y + this.victoryButton.height) {
         this.showVictoryPopup = false;
         this.victoryButton.visible = false;
-        // 重置游戏状态，进入下一关（重新开始本关）
+        this.victoryQuitButton.visible = false;
         this.resetForNextLevel();
+        return;
+      }
+      if (this.victoryQuitButton.visible && x >= this.victoryQuitButton.x && x <= this.victoryQuitButton.x + this.victoryQuitButton.width && y >= this.victoryQuitButton.y && y <= this.victoryQuitButton.y + this.victoryQuitButton.height) {
+        if (this.onQuit) this.onQuit();
         return;
       }
     }
@@ -901,7 +911,7 @@ export default class TetrisGame {
       // 触发胜利弹窗（仅当关卡变化时）
       this.showVictoryPopup = true;
       // 随机选择弹窗文案
-      const messages = ['算你走运', '太牛啦', '一般般'];
+      const messages = ['LUCK', 'COOL', 'SO'];
       this.victoryMessage = messages[Math.floor(Math.random() * messages.length)];
 
       // 更新最高分
@@ -1329,67 +1339,91 @@ export default class TetrisGame {
   renderGameInfo(x, y) {
     const { ctx } = this;
 
-    // 胜利弹窗
     if (this.showVictoryPopup) {
       const adHeight = this.adManager.getAdHeight();
       const canvas = ctx.canvas;
+      const w = canvas.width;
+      const h = canvas.height;
 
-      // 半透明覆盖层（只覆盖游戏区域，不覆盖广告区域）
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(0, adHeight, canvas.width, canvas.height - adHeight);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, adHeight, w, h - adHeight);
 
-      // 弹窗尺寸和位置
-      const popupWidth = canvas.width * 0.7;
-      const popupHeight = 250; // 胜利弹窗高度
-      const popupX = (canvas.width - popupWidth) / 2;
-      const popupY = adHeight + (canvas.height - adHeight - popupHeight) / 2;
+      const dw = 260;
+      const padding = 28;
+      const titleH = 28;
+      const msgH = 26;
+      const btnW = 180;
+      const btnH = 44;
+      const btnGap = 12;
+      const dh = padding * 2 + titleH + 16 + msgH + 20 + btnH * 2 + btnGap;
+      const dx = (w - dw) / 2;
+      const dy = adHeight + (h - adHeight - dh) / 2;
 
-      // 弹窗背景
-      ctx.fillStyle = COLORS.surfaceContainer;
-      ctx.fillRect(popupX, popupY, popupWidth, popupHeight);
+      ctx.save();
+      ctx.translate(dx + dw / 2, dy + dh / 2);
+      ctx.rotate(-1 * Math.PI / 180);
+      ctx.translate(-(dx + dw / 2), -(dy + dh / 2));
+      ctx.fillStyle = '#fffcf5';
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 4;
+      drawRoundedRect(ctx, dx, dy, dw, dh, 18);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
 
-      // 弹窗边框
-      ctx.strokeStyle = COLORS.primary;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(popupX, popupY, popupWidth, popupHeight);
-
-      // 弹窗标题：关卡信息
-      ctx.fillStyle = COLORS.onSurface;
-      ctx.font = 'bold 32px Arial';
+      ctx.fillStyle = '#322f22';
+      ctx.font = 'bold 24px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText(`关卡 ${this.level}`, popupX + popupWidth / 2, popupY + 50);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`LEVEL ${this.level}`, w / 2, dy + padding + titleH / 2);
 
-      // 随机文案
-      ctx.font = 'bold 28px Arial';
-      ctx.fillText(this.victoryMessage, popupX + popupWidth / 2, popupY + 110);
+      ctx.fillStyle = '#322f22';
+      ctx.fillRect(w / 2 - 25, dy + padding + titleH + 6, 50, 2);
 
-      // 按钮尺寸
-      const buttonWidth = 180;
-      const buttonHeight = 50;
-      const buttonX = popupX + (popupWidth - buttonWidth) / 2;
-      const buttonY = popupY + popupHeight - buttonHeight - 30;
+      ctx.font = '20px Arial';
+      ctx.fillStyle = '#5f5b4d';
+      ctx.fillText(this.victoryMessage, w / 2, dy + padding + titleH + 16 + msgH / 2);
 
-      // 按钮背景
-      ctx.fillStyle = COLORS.primary;
-      ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+      const btnX = dx + (dw - btnW) / 2;
+      const nextBtnY = dy + padding + titleH + 16 + msgH + 20;
+      const quitBtnY = nextBtnY + btnH + btnGap;
 
-      // 按钮边框
-      ctx.strokeStyle = COLORS.primaryContainer;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+      const drawVictoryBtn = (y, text, color) => {
+        ctx.save();
+        ctx.translate(btnX + btnW / 2, y + btnH / 2);
+        ctx.rotate(-1 * Math.PI / 180);
+        ctx.translate(-(btnX + btnW / 2), -(y + btnH / 2));
+        ctx.fillStyle = '#322f22';
+        drawRoundedRect(ctx, btnX + 3, y + 3, btnW, btnH, btnH / 2);
+        ctx.fill();
+        ctx.fillStyle = color;
+        ctx.strokeStyle = '#322f22';
+        ctx.lineWidth = 3;
+        drawRoundedRect(ctx, btnX, y, btnW, btnH, btnH / 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#322f22';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, btnX + btnW / 2, y + btnH / 2);
+        ctx.restore();
+      };
 
-      // 按钮文字
-      ctx.fillStyle = COLORS.onPrimary;
-      ctx.font = 'bold 22px Arial';
-      ctx.fillText('下一关', buttonX + buttonWidth / 2, buttonY + buttonHeight / 2 + 3);
+      drawVictoryBtn(nextBtnY, 'NEXT', '#fdd1b4');
+      drawVictoryBtn(quitBtnY, 'QUIT', '#ff8c94');
 
-      // 保存按钮位置
-      this.victoryButton.x = buttonX;
-      this.victoryButton.y = buttonY;
-      this.victoryButton.width = buttonWidth;
-      this.victoryButton.height = buttonHeight;
+      this.victoryButton.x = btnX;
+      this.victoryButton.y = nextBtnY;
+      this.victoryButton.width = btnW;
+      this.victoryButton.height = btnH;
       this.victoryButton.visible = true;
 
+      this.victoryQuitButton.x = btnX;
+      this.victoryQuitButton.y = quitBtnY;
+      this.victoryQuitButton.width = btnW;
+      this.victoryQuitButton.height = btnH;
+      this.victoryQuitButton.visible = true;
     }
     // 游戏结束弹窗
     else if (this.gameOver) {
@@ -1479,8 +1513,10 @@ export default class TetrisGame {
       }
 
       this.victoryButton.visible = false;
+      this.victoryQuitButton.visible = false;
     } else {
       this.victoryButton.visible = false;
+      this.victoryQuitButton.visible = false;
     }
   }
 
@@ -1506,6 +1542,7 @@ export default class TetrisGame {
     // 隐藏胜利弹窗
     this.showVictoryPopup = false;
     this.victoryButton.visible = false;
+    this.victoryQuitButton.visible = false;
 
     // 重置复活状态
     this.reviveUsed = false;
@@ -1549,6 +1586,11 @@ export default class TetrisGame {
     this.victoryButton.y = 0;
     this.victoryButton.width = 0;
     this.victoryButton.height = 0;
+    this.victoryQuitButton.visible = false;
+    this.victoryQuitButton.x = 0;
+    this.victoryQuitButton.y = 0;
+    this.victoryQuitButton.width = 0;
+    this.victoryQuitButton.height = 0;
 
     this.failLaughAnim.stop();
 
