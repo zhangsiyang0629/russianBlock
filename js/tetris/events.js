@@ -1,4 +1,5 @@
 export const EVENT_CONFUSION = 1001;
+export const EVENT_INK = 1002;
 
 const registry = new Map();
 
@@ -11,11 +12,19 @@ export function getEventHandler(eventId) {
 }
 
 const LEVEL_EVENT_CONFIGS = {
+  1: { eventIds: [], triggerBlocks: [], triggerProbability: 0 },
+  2: { eventIds: [], triggerBlocks: [], triggerProbability: 0 },
+  3: { eventIds: [], triggerBlocks: [], triggerProbability: 0 },
+  4: { eventIds: [], triggerBlocks: [], triggerProbability: 0 },
+  5: { eventIds: [], triggerBlocks: [], triggerProbability: 0 },
   6: { eventIds: [EVENT_CONFUSION], triggerBlocks: [5, 8, 10], triggerProbability: 100 },
+  7: { eventIds: [EVENT_INK], triggerBlocks: [5, 8, 10], triggerProbability: 100 },
 };
 
 export function getLevelEventConfig(level) {
-  return LEVEL_EVENT_CONFIGS[level] || { eventIds: [], triggerBlocks: [], triggerProbability: 0 };
+  const config = LEVEL_EVENT_CONFIGS[level];
+  if (!config) return { eventIds: [-1], triggerBlocks: [5, 8, 10], triggerProbability: 50 };
+  return config;
 }
 
 export class EventScheduler {
@@ -30,7 +39,6 @@ export class EventScheduler {
     this.blockCount = 0;
     this.config = getLevelEventConfig(level);
     this.pickNextInterval();
-    console.log("this.currentInterval=", this.currentInterval)
   }
 
   pickNextInterval() {
@@ -40,7 +48,6 @@ export class EventScheduler {
 
   onBlockLanded() {
     this.blockCount++;
-    console.log("onBlockLanded:", this.currentInterval, this.blockCount)
     if (this.blockCount < this.currentInterval) return null;
 
     this.blockCount = 0;

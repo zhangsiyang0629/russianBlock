@@ -6,7 +6,7 @@ import AdManager from './ad.js';
 import FailLaughAnimation from './failLaughAnim.js';
 import { saveOnLevelComplete, saveOnGameOver } from './playerData.js';
 import { drawRoundedRect } from './utils.js';
-import { EventScheduler, EVENT_CONFUSION, registerEvent, getEventHandler } from './events.js';
+import { EventScheduler, EVENT_CONFUSION, EVENT_INK, registerEvent, getEventHandler } from './events.js';
 
 // 设计系统颜色（来自Google Stitch原型）
 const COLORS = {
@@ -211,6 +211,28 @@ export default class TetrisGame {
     }
     if (!getEventHandler(EVENT_CONFUSION)) {
       registerEvent(EVENT_CONFUSION, () => { this.nextBlockConfused = true; });
+    }
+
+    this.inkPhase = 'idle';
+    this.inkTimer = 0;
+    this.inkScale = 0;
+    this.inkAlpha = 1;
+    this.inkEnterMs = 700;
+    this.inkHoldMs = 5000;
+    this.inkExitMs = 2500;
+    this.inkImage = null;
+    if (typeof wx !== 'undefined' && wx.createImage) {
+      const img = wx.createImage();
+      img.onload = () => { this.inkImage = img; };
+      img.src = 'subpackages/images/ink.png';
+    }
+    if (!getEventHandler(EVENT_INK)) {
+      registerEvent(EVENT_INK, () => {
+        this.inkPhase = 'entering';
+        this.inkTimer = 0;
+        this.inkScale = 0;
+        this.inkAlpha = 1;
+      });
     }
 
     // 初始化
@@ -903,6 +925,34 @@ export default class TetrisGame {
     // 更新广告状态（无论游戏状态如何）
     this.adManager.update(this.lastTime);
 
+    if (this.inkPhase !== 'idle') {
+      if ((this.gameOver || this.showVictoryPopup) && this.inkPhase !== 'exiting') {
+        this.inkPhase = 'exiting';
+        this.inkTimer = 0;
+      }
+      if (!this.paused) {
+        this.inkTimer += deltaTime;
+      }
+      if (this.inkPhase === 'entering') {
+        this.inkScale = Math.min(1, this.inkTimer / this.inkEnterMs);
+        if (this.inkTimer >= this.inkEnterMs) {
+          this.inkPhase = 'holding';
+          this.inkTimer = 0;
+          this.inkScale = 1;
+        }
+      } else if (this.inkPhase === 'holding') {
+        if (this.inkTimer >= this.inkHoldMs) {
+          this.inkPhase = 'exiting';
+          this.inkTimer = 0;
+        }
+      } else if (this.inkPhase === 'exiting') {
+        this.inkAlpha = Math.max(0, 1 - this.inkTimer / this.inkExitMs);
+        if (this.inkTimer >= this.inkExitMs) {
+          this.inkPhase = 'idle';
+        }
+      }
+    }
+
     if (this.gameOver || this.paused || this.showVictoryPopup) return;
 
     this.handleInput();
@@ -1060,6 +1110,25 @@ export default class TetrisGame {
 
     // 渲染底部控制按钮
     this.renderControlButtons();
+
+    // 泼墨效果
+    if (this.inkPhase !== 'idle' && this.inkImage) {
+      const imgAspect = this.inkImage.width / this.inkImage.height;
+      let iw, ih;
+      const cover = this.inkScale * 1.5;
+      if (canvas.width / canvas.height > imgAspect) {
+        ih = canvas.height * cover;
+        iw = ih * imgAspect;
+      } else {
+        iw = canvas.width * cover;
+        ih = iw / imgAspect;
+      }
+      ctx.globalAlpha = this.inkAlpha;
+      ctx.drawImage(this.inkImage,
+        0, 0, this.inkImage.width, this.inkImage.height,
+        (canvas.width - iw) / 2, (canvas.height - ih) / 2, iw, ih);
+      ctx.globalAlpha = 1;
+    }
 
     // 渲染死亡动画
     this.failLaughAnim.render(ctx);
@@ -1459,6 +1528,7 @@ export default class TetrisGame {
     this.eventScheduler.reset(this.level);
     this.nextBlockConfused = false;
     this.smokeParticles = [];
+    this.inkPhase = 'idle';
     this.currentBlock = null;
     this.nextBlock = null;
     this.gameOver = false;
