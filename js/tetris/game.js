@@ -3,7 +3,7 @@ const isDebugMode = false;
 import Grid from './grid.js';
 import Tetromino from './block.js';
 import AdManager from './ad.js';
-import PengfuAnimation from './animation.js';
+import FailLaughAnimation from './failLaughAnim.js';
 import { saveOnLevelComplete, saveOnGameOver } from './playerData.js';
 import { drawRoundedRect } from './utils.js';
 import { EventScheduler, EVENT_CONFUSION, registerEvent, getEventHandler } from './events.js';
@@ -17,38 +17,38 @@ const COLORS = {
   surfaceContainerHigh: '#eae2cb',
   surfaceContainerLow: '#f8f0dc',
   surfaceContainerLowest: '#ffffff',
-  
+
   // 文字和边框
   onSurface: '#322f22',
   onSurfaceVariant: '#5f5b4d',
   onBackground: '#322f22',
   outline: '#7b7767',
   outlineVariant: '#b2ad9c',
-  
+
   // 主色系
   primary: '#993d46',
   primaryContainer: '#ff8c94',
   onPrimary: '#ffefef',
   onPrimaryContainer: '#5e0f1c',
-  
+
   // 次要色系
   secondary: '#296654',
   secondaryContainer: '#b1efd8',
   onSecondary: '#c5ffe9',
   onSecondaryContainer: '#1d5c4a',
-  
+
   // 第三色系
   tertiary: '#75553e',
   tertiaryContainer: '#fdd1b4',
   onTertiary: '#fff0e8',
   onTertiaryContainer: '#644630',
-  
+
   // 错误色
   error: '#b02500',
   errorContainer: '#f95630',
   onError: '#ffefec',
   onErrorContainer: '#520c00',
-  
+
   // 固定色
   primaryFixed: '#ff8c94',
   primaryFixedDim: '#ef7f87',
@@ -80,7 +80,7 @@ const BASE_DROP_INTERVAL = 1000; // 1秒/格
 const LEVEL_CONFIG = {
   // 1-16关：顺序遍历所有难度组合 (i,j)
   sequentialLevels: 16,
-  
+
   // 第17关：固定极限难度 + 初始砖块
   fixedHardLevelNumber: 17,
   fixedHardLevel: {
@@ -88,10 +88,10 @@ const LEVEL_CONFIG = {
     speedIndex: 3, // j=4 -> 索引3
     initialLayers: { min: 5, max: 8 }, // 5-8层随机初始砖块
   },
-  
+
   // 第18关及以后：完全随机模式
   randomModeStart: 18,
-  
+
   // 初始砖块层数范围
   initialLayersRange: { min: 0, max: 8 }, // 0-8层
 };
@@ -120,18 +120,18 @@ export default class TetrisGame {
   constructor(ctx, savedLevel = 1, savedHighScore = 0, musicManager = null) {
     this.ctx = ctx;
     const canvas = ctx.canvas;
-    
+
     this.musicManager = musicManager;
 
     // 广告管理器
     this.adManager = new AdManager();
-    
+
     // 计算布局参数并存储
     this.adHeight = this.adManager.getAdHeight();
     this.bottomHeight = Math.floor(canvas.height / 5);
     this.availableWidth = canvas.width - 40; // 左右留白
     this.availableHeight = canvas.height - this.adHeight - this.bottomHeight - 20; // 上下留白
-    
+
     // 初始化关卡难度配置
     this.gameOver = false;
     this.paused = false;
@@ -140,7 +140,7 @@ export default class TetrisGame {
     this.highScore = savedHighScore; // 从玩家数据加载的最高分
     this.linesCleared = 0;
     this.updateLevelConfig();
-    
+
     // 根据当前网格尺寸计算合适的单元格大小
     const gridSize = GRID_SIZES[this.gridSizeIndex];
     const maxCellSizeByWidth = Math.floor(this.availableWidth / gridSize.cols); // 根据列数
@@ -148,35 +148,35 @@ export default class TetrisGame {
     const cellSize = Math.min(maxCellSizeByWidth, maxCellSizeByHeight, 30); // 最大30px保持清晰度
     // 优先确保网格能放入可用空间，不强制最小15px
     const safeCellSize = Math.max(8, cellSize); // 最小8px确保基本可视性
-    
+
     console.log(`布局计算: 屏幕=${canvas.width}x${canvas.height}, 广告高=${this.adHeight}, 底部高=${this.bottomHeight}, 可用高=${this.availableHeight}, 网格尺寸=${gridSize.cols}x${gridSize.rows}, cellSize=${safeCellSize}, 网格高=${gridSize.rows * safeCellSize}`);
-    
+
     this.cellSize = safeCellSize; // 保存单元格大小用于重置
-    this.grid = new Grid(safeCellSize, gridSize.cols, gridSize.rows);  
+    this.grid = new Grid(safeCellSize, gridSize.cols, gridSize.rows);
     this.currentBlock = null;
     this.nextBlock = null;
-    
+
     // 关卡难度配置
     this.gridSizeIndex = 0; // i (0-based) 对应 GRID_SIZES 索引
     this.speedIndex = 0;    // j (0-based) 对应 SPEED_RATES 索引
     this.initialLayers = 0; // 初始随机砖块层数 (0-8)
-    
+
     // 游戏计时相关
     this.lastTime = 0;
     this.dropInterval = 1000; // 初始下落间隔（毫秒）
     this.dropCounter = 0;
     this.aniId = null;
-    
+
     // 输入状态
     this.keys = {};
-    
+
     // 暂停按钮
     this.pauseButton = { x: 0, y: 0, width: 0, height: 0 };
     this._gameOverButtons = [];
-    
+
     // 复活状态
     this.reviveUsed = false; // 是否已使用过复活
-    
+
     // 胜利弹窗状态
     this.showVictoryPopup = false;
     this.victoryMessage = '';
@@ -195,9 +195,9 @@ export default class TetrisGame {
       { id: 'rotate', x: 0, y: 0, width: 0, height: 0, icon: '⟳', desc: '变换' },
       { id: 'right', x: 0, y: 0, width: 0, height: 0, icon: '→', desc: '右移' }
     ];
-    
+
     // 动画实例
-    this.pengfuAnimation = new PengfuAnimation();
+    this.failLaughAnim = new FailLaughAnimation();
 
     // 事件系统
     this.eventScheduler = new EventScheduler(this.level);
@@ -239,25 +239,25 @@ export default class TetrisGame {
         initialLayers: 0 // 1-16关无初始砖块
       };
     }
-    
+
     // 第17关：固定极限难度 + 初始砖块
     if (level === LEVEL_CONFIG.fixedHardLevelNumber) {
       const gridSizeIndex = LEVEL_CONFIG.fixedHardLevel.gridIndex;
       const speedIndex = LEVEL_CONFIG.fixedHardLevel.speedIndex;
       // 随机5-8层初始砖块
-      const initialLayers = LEVEL_CONFIG.fixedHardLevel.initialLayers.min + 
+      const initialLayers = LEVEL_CONFIG.fixedHardLevel.initialLayers.min +
         Math.floor(Math.random() * (LEVEL_CONFIG.fixedHardLevel.initialLayers.max - LEVEL_CONFIG.fixedHardLevel.initialLayers.min + 1));
       return { gridSizeIndex, speedIndex, initialLayers };
     }
-    
+
     // 第18关及以后：完全随机模式
     const gridSizeIndex = Math.floor(Math.random() * GRID_SIZES.length);
     const speedIndex = Math.floor(Math.random() * SPEED_RATES.length);
-    const initialLayers = LEVEL_CONFIG.initialLayersRange.min + 
+    const initialLayers = LEVEL_CONFIG.initialLayersRange.min +
       Math.floor(Math.random() * (LEVEL_CONFIG.initialLayersRange.max - LEVEL_CONFIG.initialLayersRange.min + 1));
     return { gridSizeIndex, speedIndex, initialLayers };
   }
-  
+
   /**
    * 更新当前关卡的难度配置
    */
@@ -266,47 +266,47 @@ export default class TetrisGame {
     this.gridSizeIndex = config.gridSizeIndex;
     this.speedIndex = config.speedIndex;
     this.initialLayers = config.initialLayers;
-    
+
     // 确保1-16关没有初始砖块（防御性编程）
     if (this.level <= LEVEL_CONFIG.sequentialLevels) {
       this.initialLayers = 0;
     }
-    
+
     // 更新下落速度
     const speedRate = SPEED_RATES[this.speedIndex];
     this.dropInterval = Math.floor(BASE_DROP_INTERVAL / speedRate);
-    
+
     console.log(`关卡 ${this.level} 配置: 格子=${GRID_SIZES[this.gridSizeIndex].cols}x${GRID_SIZES[this.gridSizeIndex].rows}, 速度倍率=${speedRate}, 初始层数=${this.initialLayers}`);
   }
-  
+
   /**
    * 为新关卡重置网格（包括初始砖块生成）
    */
   resetGridForNewLevel() {
     const gridSize = GRID_SIZES[this.gridSizeIndex];
-    
+
     // 重新计算单元格大小以适应新网格尺寸
     const maxCellSizeByWidth = Math.floor(this.availableWidth / gridSize.cols);
     const maxCellSizeByHeight = Math.floor(this.availableHeight / gridSize.rows);
     const cellSize = Math.min(maxCellSizeByWidth, maxCellSizeByHeight, 30);
     const safeCellSize = Math.max(8, cellSize);
-    
+
     this.cellSize = safeCellSize;
     this.grid = new Grid(safeCellSize, gridSize.cols, gridSize.rows);
-    
+
     // 生成初始随机砖块
     if (this.initialLayers > 0) {
       this.grid.generateInitialLayers(this.initialLayers);
     }
-    
+
     console.log(`网格重置: ${gridSize.cols}x${gridSize.rows}, cellSize=${safeCellSize}, 初始层数=${this.initialLayers}`);
-    
+
     // 重置当前方块
     this.currentBlock = null;
     this.nextBlock = null;
     this.createNewBlock();
   }
-  
+
   /**
    * 启动游戏（开始游戏循环和输入监听）
    */
@@ -334,12 +334,12 @@ export default class TetrisGame {
       this.currentBlock = new Tetromino(Tetromino.randomType());
       this.currentBlock.setPosition(Math.floor(this.grid.cols / 2) - 2, 0);
     }
-    
+
     this.currentBlock.confused = this.nextBlockConfused;
     this.nextBlockConfused = false;
-    
+
     this.nextBlock = new Tetromino(Tetromino.randomType());
-    
+
     // 检查游戏是否结束（新方块无法放置）
     if (!this.grid.isValidShapePosition(
       this.currentBlock.getShape(),
@@ -357,24 +357,23 @@ export default class TetrisGame {
         this.highScore = this.score;
       }
       saveOnGameOver(this.score, this.highScore);
-      
+
       // 播放死亡动画（屏幕右下角）
       const canvas = this.ctx.canvas;
       // 根据屏幕尺寸调整缩放比例（高度宽度都放大一倍）
       const targetWidth = canvas.width * 0.6; // 动画占屏幕宽度的60%
-      
+
       // 动态获取帧尺寸，如果无法获取则使用默认值
-      const frameSize = this.pengfuAnimation.getFirstFrameSize();
+      const frameSize = this.failLaughAnim.getFirstFrameSize();
       const frameWidth = frameSize ? frameSize.width : 432; // 默认值
       const frameHeight = frameSize ? frameSize.height : 576; // 默认值
-      
+
       const scale = targetWidth / frameWidth;
       const scaledWidth = frameWidth * scale;
       const scaledHeight = frameHeight * scale;
-      const x = canvas.width - scaledWidth / 2 - 10; // 右侧留10px边距
-      // 裁剪后动画（上半身）的中心点，使其底部与按钮区域顶部重合
-      const y = canvas.height - this.bottomHeight - scaledHeight / 4;
-      this.pengfuAnimation.play(x, y, scale, false);
+      const x = canvas.width - scaledWidth / 2 - 10;
+      const y = canvas.height - this.bottomHeight - scaledHeight * 3.4 / 10;
+      this.failLaughAnim.play(x, y, scale, false);
     }
   }
 
@@ -384,56 +383,56 @@ export default class TetrisGame {
   renderScoreAndNextBlockUI(offsetX, offsetY, gridWidth, gridHeight) {
     const { ctx } = this;
     const canvas = ctx.canvas;
-    
+
     // 左侧积分卡片（缩小1/3）
     const scoreCardWidth = 67;
     const scoreCardHeight = 47;
     let scoreCardX = offsetX - scoreCardWidth - 15;
     const scoreCardY = offsetY + 10;
-    
+
     // 边界检查：确保左侧卡片不会超出屏幕左边缘
     if (scoreCardX < 15) {
       scoreCardX = 15;
     }
-    
+
     // 绘制SCORE卡片（旋转-2度）
     ctx.save();
     ctx.translate(scoreCardX + scoreCardWidth / 2, scoreCardY + scoreCardHeight / 2);
     ctx.rotate(-2 * Math.PI / 180);
     ctx.translate(-scoreCardWidth / 2, -scoreCardHeight / 2);
-    
+
     // 卡片阴影（手动绘制，4px偏移）
     ctx.fillStyle = COLORS.onBackground;
     ctx.fillRect(4, 4, scoreCardWidth, scoreCardHeight);
-    
+
     // 卡片背景
     ctx.fillStyle = COLORS.surfaceContainerHigh;
     ctx.fillRect(0, 0, scoreCardWidth, scoreCardHeight);
-    
+
     // 卡片边框
     ctx.strokeStyle = COLORS.onBackground;
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, scoreCardWidth, scoreCardHeight);
-    
+
     // 标题文字（缩小比例）
     ctx.fillStyle = COLORS.onSurfaceVariant;
     ctx.font = 'bold 7px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText('SCORE', scoreCardWidth / 2, 5);
-    
+
     // 分数数字（缩小比例）
     ctx.fillStyle = COLORS.primary;
     ctx.font = 'bold 16px Arial';
     ctx.textBaseline = 'middle';
     ctx.fillText(this.score.toString(), scoreCardWidth / 2, scoreCardHeight / 2 + 3);
-    
+
     // 关卡显示
     ctx.fillStyle = COLORS.onSurfaceVariant;
     ctx.font = 'bold 5px Arial';
     ctx.textBaseline = 'top';
     ctx.fillText(`STAGE ${this.level}`, scoreCardWidth / 2, scoreCardHeight - 8);
-    
+
     ctx.restore();
 
     // 暂停按钮（分数卡片上方）
@@ -473,43 +472,43 @@ export default class TetrisGame {
     ctx.textBaseline = 'top';
     ctx.fillText(`BEST ${this.highScore}`, scoreCardX + scoreCardWidth / 2, scoreCardY + scoreCardHeight + 5);
     ctx.restore();
-    
+
     // 右侧下一个方块预览卡片（缩小1/3）
     const nextCardWidth = 67;
     const nextCardHeight = 67;
     let nextCardX = offsetX + gridWidth + 15;
     const nextCardY = offsetY + 10;
-    
+
     // 边界检查：确保右侧卡片不会超出屏幕右边缘
     if (nextCardX + nextCardWidth + 15 > canvas.width) {
       nextCardX = canvas.width - nextCardWidth - 15;
     }
-    
+
     ctx.save();
     ctx.translate(nextCardX + nextCardWidth / 2, nextCardY + nextCardHeight / 2);
     ctx.rotate(2 * Math.PI / 180);
     ctx.translate(-nextCardWidth / 2, -nextCardHeight / 2);
-    
+
     // 卡片阴影（手动绘制，4px偏移）
     ctx.fillStyle = COLORS.onBackground;
     ctx.fillRect(4, 4, nextCardWidth, nextCardHeight);
-    
+
     // 卡片背景
     ctx.fillStyle = COLORS.surfaceContainerHigh;
     ctx.fillRect(0, 0, nextCardWidth, nextCardHeight);
-    
+
     // 卡片边框
     ctx.strokeStyle = COLORS.onBackground;
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, nextCardWidth, nextCardHeight);
-    
+
     // 标题文字（缩小比例）
     ctx.fillStyle = COLORS.onSurfaceVariant;
     ctx.font = 'bold 7px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText('NEXT', nextCardWidth / 2, 5);
-    
+
     // 渲染下一个方块
     if (this.nextBlock) {
       const cellSize = 10;
@@ -520,10 +519,10 @@ export default class TetrisGame {
       const blockHeight = shapeHeight * cellSize;
       const blockX = (nextCardWidth - blockWidth) / 2;
       const blockY = (nextCardHeight - blockHeight) / 2 + 10;
-      
+
       ctx.save();
       ctx.translate(blockX, blockY);
-      
+
       // 渲染方块形状
       for (let y = 0; y < shapeHeight; y++) {
         for (let x = 0; x < shapeWidth; x++) {
@@ -540,7 +539,7 @@ export default class TetrisGame {
       }
       ctx.restore();
     }
-    
+
     ctx.restore();
   }
 
@@ -550,54 +549,54 @@ export default class TetrisGame {
   renderLevelUI(offsetX, offsetY, gridWidth) {
     const { ctx } = this;
     const canvas = ctx.canvas;
-    
+
     // 关卡卡片尺寸（与SCORE卡片相同）
     const levelCardWidth = 67;
     const levelCardHeight = 47;
-    
+
     // 计算位置：网格顶部中间
     const levelCardX = offsetX + gridWidth / 2 - levelCardWidth / 2;
     let levelCardY = offsetY - levelCardHeight - 10; // 网格上方10px
-    
+
     // 边界检查：确保不会与广告区域严重重叠
     const minY = this.adManager.getAdHeight() + 5; // 广告下方5px
     if (levelCardY < minY) {
       // 如果会与广告区域重叠，调整到广告下方
       levelCardY = minY;
     }
-    
+
     // 绘制LEVEL卡片（旋转2度，与NEXT卡片对称）
     ctx.save();
     ctx.translate(levelCardX + levelCardWidth / 2, levelCardY + levelCardHeight / 2);
     ctx.rotate(2 * Math.PI / 180);
     ctx.translate(-levelCardWidth / 2, -levelCardHeight / 2);
-    
+
     // 卡片阴影（手动绘制，4px偏移）
     ctx.fillStyle = COLORS.onBackground;
     ctx.fillRect(4, 4, levelCardWidth, levelCardHeight);
-    
+
     // 卡片背景
     ctx.fillStyle = COLORS.surfaceContainerHigh;
     ctx.fillRect(0, 0, levelCardWidth, levelCardHeight);
-    
+
     // 卡片边框
     ctx.strokeStyle = COLORS.onBackground;
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, levelCardWidth, levelCardHeight);
-    
+
     // 标题文字
     ctx.fillStyle = COLORS.onSurfaceVariant;
     ctx.font = 'bold 7px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText('LEVEL', levelCardWidth / 2, 5);
-    
+
     // 关卡数字（大号显示）
     ctx.fillStyle = COLORS.primary;
     ctx.font = 'bold 16px Arial';
     ctx.textBaseline = 'middle';
     ctx.fillText(this.level.toString(), levelCardWidth / 2, levelCardHeight / 2 + 3);
-    
+
     // 网格尺寸显示
     const gridSize = GRID_SIZES[this.gridSizeIndex];
     const speedRate = SPEED_RATES[this.speedIndex];
@@ -608,7 +607,7 @@ export default class TetrisGame {
     const speedInfo = `${speedRate.toFixed(2)}×`;
     ctx.fillText(gridInfo, levelCardWidth / 2, levelCardHeight - 15);
     ctx.fillText(speedInfo, levelCardWidth / 2, levelCardHeight - 8);
-    
+
     ctx.restore();
   }
 
@@ -620,7 +619,7 @@ export default class TetrisGame {
     wx.onKeyDown((res) => {
       this.keys[res.keyCode] = true;
     });
-    
+
     wx.onKeyUp((res) => {
       this.keys[res.keyCode] = false;
     });
@@ -656,7 +655,7 @@ export default class TetrisGame {
       }
       return;
     }
-    
+
     // 检查是否点击了胜利弹窗的NEXT按钮
     if (this.showVictoryPopup) {
       const { x: btnX, y: btnY, width, height, visible } = this.victoryButton;
@@ -669,7 +668,7 @@ export default class TetrisGame {
         return;
       }
     }
-    
+
     if (this.gameOver) {
       for (const btn of this._gameOverButtons) {
         if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) {
@@ -701,15 +700,15 @@ export default class TetrisGame {
         return;
       }
     }
-    
+
     // 检查是否点击了控制按钮
     const canvas = this.ctx.canvas;
-    
+
     // 如果点击在底部区域，则检查按钮
     if (y >= canvas.height - this.bottomHeight) {
       for (const button of this.controlButtons) {
         if (x >= button.x && x <= button.x + button.width &&
-            y >= button.y && y <= button.y + button.height) {
+          y >= button.y && y <= button.y + button.height) {
           switch (button.id) {
             case 'left':
               this.moveBlock(-1, 0);
@@ -763,24 +762,24 @@ export default class TetrisGame {
    */
   moveBlock(dx, dy) {
     if (this.gameOver) return;
-    
+
     if (dy === 0 && this.currentBlock && this.currentBlock.confused) {
       dx = -dx;
     }
-    
+
     const clone = this.currentBlock.clone();
     clone.move(dx, dy);
-    
+
     if (this.grid.isValidShapePosition(clone.getShape(), clone.x, clone.y)) {
       this.currentBlock.move(dx, dy);
       return true;
     }
-    
+
     // 如果是向下移动失败，则锁定方块
     if (dy > 0) {
       this.lockBlock();
     }
-    
+
     return false;
   }
 
@@ -789,16 +788,16 @@ export default class TetrisGame {
    */
   rotateBlock() {
     if (this.gameOver) return;
-    
+
     const clone = this.currentBlock.clone();
     clone.rotate();
-    
+
     // 尝试墙踢（wall kick）：如果旋转后位置无效，尝试左右移动一格
     if (this.grid.isValidShapePosition(clone.getShape(), clone.x, clone.y)) {
       this.currentBlock.rotate();
       return;
     }
-    
+
     // 尝试向左移动
     clone.x -= 1;
     if (this.grid.isValidShapePosition(clone.getShape(), clone.x, clone.y)) {
@@ -806,7 +805,7 @@ export default class TetrisGame {
       this.currentBlock.x -= 1;
       return;
     }
-    
+
     // 尝试向右移动
     clone.x += 2;
     if (this.grid.isValidShapePosition(clone.getShape(), clone.x, clone.y)) {
@@ -821,7 +820,7 @@ export default class TetrisGame {
    */
   hardDrop() {
     if (this.gameOver) return;
-    
+
     while (this.moveBlock(0, 1)) {
       // 持续向下移动直到不能移动为止
     }
@@ -841,7 +840,7 @@ export default class TetrisGame {
       const handler = getEventHandler(eventId);
       if (handler) handler();
     }
-    
+
     const lines = this.grid.clearLines();
     if (lines > 0) {
       this.linesCleared += lines;
@@ -849,7 +848,7 @@ export default class TetrisGame {
       this.score += points;
       this.updateLevel();
     }
-    
+
     this.createNewBlock();
   }
 
@@ -867,29 +866,29 @@ export default class TetrisGame {
     // 检查是否进入新关卡
     if (this.score >= SCORE_CONFIG.levelUpThreshold) {
       const oldLevel = this.level;
-      this.level = this.level+1;
-      
+      this.level = this.level + 1;
+
       // 更新难度配置
       this.updateLevelConfig();
       this.eventScheduler.reset(this.level);
-      
+
       // 重置网格以适应新关卡
       this.resetGridForNewLevel();
-      
+
       // 触发胜利弹窗（仅当关卡变化时）
       this.showVictoryPopup = true;
       // 随机选择弹窗文案
       const messages = ['算你走运', '太牛啦', '一般般'];
       this.victoryMessage = messages[Math.floor(Math.random() * messages.length)];
-      
+
       // 更新最高分
       if (this.score > this.highScore) {
         this.highScore = this.score;
       }
-      
+
       // 保存玩家数据（关卡和最高分）
       saveOnLevelComplete(this.level, this.score, this.highScore);
-      
+
       console.log(`升级: ${oldLevel} -> ${this.level}, 格子=${GRID_SIZES[this.gridSizeIndex].cols}x${GRID_SIZES[this.gridSizeIndex].rows}, 速度=${SPEED_RATES[this.speedIndex]}, 初始层=${this.initialLayers}`);
     }
   }
@@ -899,13 +898,13 @@ export default class TetrisGame {
    */
   update(deltaTime) {
     // 更新死亡动画（无论游戏状态如何）
-    this.pengfuAnimation.update(Date.now());
-    
+    this.failLaughAnim.update(Date.now());
+
     // 更新广告状态（无论游戏状态如何）
     this.adManager.update(this.lastTime);
-    
+
     if (this.gameOver || this.paused || this.showVictoryPopup) return;
-    
+
     this.handleInput();
 
     if (this.currentBlock && this.currentBlock.confused) {
@@ -947,7 +946,7 @@ export default class TetrisGame {
 
     // 更新网格动画状态
     this.grid.updateAnimation();
-    
+
     // 方块自动下落
     this.dropCounter += deltaTime;
     if (this.dropCounter > this.dropInterval) {
@@ -962,29 +961,29 @@ export default class TetrisGame {
   render() {
     const { ctx } = this;
     const canvas = ctx.canvas;
-    
+
     // 清空画布（使用设计系统背景色）
     ctx.fillStyle = COLORS.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     // 渲染广告区域
     this.adManager.render(ctx);
-    
+
     // 计算游戏区域位置（居中，考虑广告和底部按键区高度）
     const gridWidth = this.grid.cols * this.grid.cellSize;
     const gridHeight = this.grid.rows * this.grid.cellSize;
-    
+
     // 获取当前广告高度（可能因广告可见性而改变）
     const currentAdHeight = this.adManager.getAdHeight();
-    
+
     // 计算安全边界
     const topBoundary = currentAdHeight + 10;
     const bottomBoundary = canvas.height - this.bottomHeight - 10;
     const availableSpace = bottomBoundary - topBoundary;
-    
+
     const offsetX = (canvas.width - gridWidth) / 2;
     let offsetY;
-    
+
     if (gridHeight <= availableSpace) {
       // 网格可以完全放入可用空间，垂直居中
       offsetY = topBoundary + (availableSpace - gridHeight) / 2;
@@ -994,37 +993,37 @@ export default class TetrisGame {
       offsetY = topBoundary;
       console.warn(`网格高度(${gridHeight}px)超过可用空间(${availableSpace}px)，使用顶部对齐`);
     }
-    
+
     // 最终安全检查：优先确保网格不会与底部按键区重叠
     const gridBottom = offsetY + gridHeight;
     const buttonTop = canvas.height - this.bottomHeight;
-    
+
     // 如果网格会与按钮区域重叠，调整位置
     if (gridBottom > buttonTop - 5) { // 留5px安全边距
       // 优先确保不覆盖按钮区域，即使这意味着可能与广告区域重叠
       const requiredOffsetY = buttonTop - gridHeight - 5;
-      
+
       // 如果调整后的位置会导致网格与广告区域严重重叠（超过20像素），记录警告
       if (requiredOffsetY < topBoundary - 20) {
         console.warn(`网格无法完全放入安全区域，可能与广告区域重叠: offsetY=${requiredOffsetY}, topBoundary=${topBoundary}`);
       }
-      
+
       offsetY = requiredOffsetY;
     }
-    
+
     // 额外检查：如果网格仍然与按钮区域重叠（极端情况），强制调整
     if (offsetY + gridHeight > buttonTop) {
       offsetY = buttonTop - gridHeight;
       console.warn(`强制调整网格位置以避免与按钮区域重叠`);
     }
-    
+
     // 保存画布状态
     ctx.save();
     ctx.translate(offsetX, offsetY);
-    
+
     // 渲染网格
     this.grid.render(ctx);
-    
+
     // 渲染当前方块
     if (this.currentBlock) {
       this.currentBlock.render(ctx, this.grid.cellSize);
@@ -1047,14 +1046,14 @@ export default class TetrisGame {
 
     // 恢复画布状态
     ctx.restore();
-    
+
     // 渲染积分和下一个方块UI（按照原型设计）
     if (!this.gameOver) {
       this.renderScoreAndNextBlockUI(offsetX, offsetY, gridWidth, gridHeight);
       // 渲染关卡UI（游戏区顶部中间）
       this.renderLevelUI(offsetX, offsetY, gridWidth);
     }
-    
+
     // 渲染游戏信息（游戏结束弹窗）
     // 使用固定位置，因为弹窗会覆盖整个屏幕
     this.renderGameInfo(0, 0);
@@ -1063,7 +1062,7 @@ export default class TetrisGame {
     this.renderControlButtons();
 
     // 渲染死亡动画
-    this.pengfuAnimation.render(ctx);
+    this.failLaughAnim.render(ctx);
 
     if (this.paused) {
       this.renderPauseMenu();
@@ -1158,19 +1157,19 @@ export default class TetrisGame {
   renderControlButtons() {
     const { ctx } = this;
     const canvas = ctx.canvas;
-    
+
     // 底部区域背景（浅色背景，顶部边框和阴影）
     ctx.fillStyle = COLORS.surfaceContainerLow;
     ctx.fillRect(0, canvas.height - this.bottomHeight, canvas.width, this.bottomHeight);
-    
+
     // 顶部边框
     ctx.fillStyle = COLORS.onBackground;
     ctx.fillRect(0, canvas.height - this.bottomHeight, canvas.width, 4);
-    
+
     // 顶部阴影（向上偏移）
     ctx.fillStyle = 'rgba(50, 47, 34, 0.05)';
     ctx.fillRect(0, canvas.height - this.bottomHeight - 4, canvas.width, 4);
-    
+
     // 按钮参数
     const buttonCount = this.controlButtons.length;
     const buttonMargin = 20; // 按钮与边缘的间距
@@ -1179,16 +1178,16 @@ export default class TetrisGame {
     const buttonWidth = Math.min(80, (canvas.width - totalMargin) / buttonCount);
     const buttonHeight = Math.min(80, this.bottomHeight - 20);
     const buttonY = canvas.height - this.bottomHeight + (this.bottomHeight - buttonHeight) / 2;
-    
+
     // 计算第一个按钮的X位置（水平居中）
     const totalWidth = buttonWidth * buttonCount + buttonSpacing * (buttonCount - 1);
     const startX = (canvas.width - totalWidth) / 2;
-    
+
     // 渲染每个按钮
     for (let i = 0; i < buttonCount; i++) {
       const button = this.controlButtons[i];
       const buttonX = startX + i * (buttonWidth + buttonSpacing);
-      
+
       // 按钮颜色（旋转按钮特殊颜色）
       const isRotateButton = button.id === 'rotate';
       const buttonColor = isRotateButton ? '#FF9500' : COLORS.secondaryContainer;
@@ -1197,13 +1196,13 @@ export default class TetrisGame {
       const scaledHeight = buttonHeight * buttonScale;
       const scaledX = buttonX - (scaledWidth - buttonWidth) / 2;
       const scaledY = buttonY - (scaledHeight - buttonHeight) / 2;
-      
+
       // 更新按钮位置（用于点击检测）- 使用缩放后的坐标和尺寸
       button.x = scaledX;
       button.y = scaledY;
       button.width = scaledWidth;
       button.height = scaledHeight;
-      
+
       // 绘制阴影（使用Canvas阴影属性实现模糊效果）
       ctx.save();
       const shadowColor = isRotateButton ? 'rgba(50, 47, 34, 0.7)' : EFFECTS.shadowColor;
@@ -1217,18 +1216,18 @@ export default class TetrisGame {
       drawRoundedRect(ctx, scaledX, scaledY, scaledWidth, scaledHeight, scaledWidth / 2);
       ctx.fill();
       ctx.restore();
-      
+
       // 绘制按钮背景（圆形）
       ctx.fillStyle = buttonColor;
       drawRoundedRect(ctx, scaledX, scaledY, scaledWidth, scaledHeight, scaledWidth / 2);
       ctx.fill();
-      
+
       // 绘制按钮边框
       ctx.strokeStyle = COLORS.onBackground;
       ctx.lineWidth = 4;
       drawRoundedRect(ctx, scaledX, scaledY, scaledWidth, scaledHeight, scaledWidth / 2);
       ctx.stroke();
-      
+
       // 绘制按钮图标（更粗的图标）
       const fontCoff = isRotateButton ? 0.9 : 0.45;
       ctx.font = `bold ${Math.floor(scaledWidth * fontCoff)}px Arial`;
@@ -1249,7 +1248,7 @@ export default class TetrisGame {
         scaledX + scaledWidth / 2,
         scaledY + scaledHeight / 2
       );
-      
+
       // 移除按钮描述（小字）
     }
   }
@@ -1259,68 +1258,68 @@ export default class TetrisGame {
    */
   renderGameInfo(x, y) {
     const { ctx } = this;
-    
+
     // 胜利弹窗
     if (this.showVictoryPopup) {
       const adHeight = this.adManager.getAdHeight();
       const canvas = ctx.canvas;
-      
+
       // 半透明覆盖层（只覆盖游戏区域，不覆盖广告区域）
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
       ctx.fillRect(0, adHeight, canvas.width, canvas.height - adHeight);
-      
+
       // 弹窗尺寸和位置
       const popupWidth = canvas.width * 0.7;
       const popupHeight = 250; // 胜利弹窗高度
       const popupX = (canvas.width - popupWidth) / 2;
       const popupY = adHeight + (canvas.height - adHeight - popupHeight) / 2;
-      
+
       // 弹窗背景
       ctx.fillStyle = COLORS.surfaceContainer;
       ctx.fillRect(popupX, popupY, popupWidth, popupHeight);
-      
+
       // 弹窗边框
       ctx.strokeStyle = COLORS.primary;
       ctx.lineWidth = 3;
       ctx.strokeRect(popupX, popupY, popupWidth, popupHeight);
-      
+
       // 弹窗标题：关卡信息
       ctx.fillStyle = COLORS.onSurface;
       ctx.font = 'bold 32px Arial';
       ctx.textAlign = 'center';
       ctx.fillText(`关卡 ${this.level}`, popupX + popupWidth / 2, popupY + 50);
-      
+
       // 随机文案
       ctx.font = 'bold 28px Arial';
       ctx.fillText(this.victoryMessage, popupX + popupWidth / 2, popupY + 110);
-      
+
       // 按钮尺寸
       const buttonWidth = 180;
       const buttonHeight = 50;
       const buttonX = popupX + (popupWidth - buttonWidth) / 2;
       const buttonY = popupY + popupHeight - buttonHeight - 30;
-      
+
       // 按钮背景
       ctx.fillStyle = COLORS.primary;
       ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
-      
+
       // 按钮边框
       ctx.strokeStyle = COLORS.primaryContainer;
       ctx.lineWidth = 2;
       ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
-      
+
       // 按钮文字
       ctx.fillStyle = COLORS.onPrimary;
       ctx.font = 'bold 22px Arial';
       ctx.fillText('下一关', buttonX + buttonWidth / 2, buttonY + buttonHeight / 2 + 3);
-      
+
       // 保存按钮位置
       this.victoryButton.x = buttonX;
       this.victoryButton.y = buttonY;
       this.victoryButton.width = buttonWidth;
       this.victoryButton.height = buttonHeight;
       this.victoryButton.visible = true;
-      
+
     }
     // 游戏结束弹窗
     else if (this.gameOver) {
@@ -1421,35 +1420,35 @@ export default class TetrisGame {
   gameLoop(timestamp) {
     const deltaTime = timestamp - this.lastTime || 0;
     this.lastTime = timestamp;
-    
+
     this.update(deltaTime);
     this.render();
-    
+
     this.aniId = requestAnimationFrame(this.gameLoop.bind(this));
   }
 
-   /**
-    * 进入下一关（网格已在updateLevel中重置，此处只需隐藏弹窗并继续游戏）
-    */
-   resetForNextLevel() {
-     console.log(`进入下一关: 关卡 ${this.level}, 格子=${GRID_SIZES[this.gridSizeIndex].cols}x${GRID_SIZES[this.gridSizeIndex].rows}, 初始层数=${this.initialLayers}`);
-     
-     // 隐藏胜利弹窗
-     this.showVictoryPopup = false;
-     this.victoryButton.visible = false;
-     
-      // 重置复活状态
-     this.reviveUsed = false;
-     
-     // 注意：广告管理器不会被重置，广告会继续显示
-     
-     // 停止死亡动画
-     this.pengfuAnimation.stop();
-     
-     // 网格已在updateLevel的resetGridForNewLevel中重置
-     // 当前方块和下一个方块已在resetGridForNewLevel中重置
-     // 游戏状态已更新，直接继续游戏即可
-   }
+  /**
+   * 进入下一关（网格已在updateLevel中重置，此处只需隐藏弹窗并继续游戏）
+   */
+  resetForNextLevel() {
+    console.log(`进入下一关: 关卡 ${this.level}, 格子=${GRID_SIZES[this.gridSizeIndex].cols}x${GRID_SIZES[this.gridSizeIndex].rows}, 初始层数=${this.initialLayers}`);
+
+    // 隐藏胜利弹窗
+    this.showVictoryPopup = false;
+    this.victoryButton.visible = false;
+
+    // 重置复活状态
+    this.reviveUsed = false;
+
+    // 注意：广告管理器不会被重置，广告会继续显示
+
+    // 停止死亡动画
+    this.failLaughAnim.stop();
+
+    // 网格已在updateLevel的resetGridForNewLevel中重置
+    // 当前方块和下一个方块已在resetGridForNewLevel中重置
+    // 游戏状态已更新，直接继续游戏即可
+  }
 
   /**
    * 重新开始游戏
@@ -1470,7 +1469,7 @@ export default class TetrisGame {
     this.dropInterval = 1000;
     this.dropCounter = 0;
     this.keys = {};
-    
+
     this.reviveUsed = false;
     this.showVictoryPopup = false;
     this.victoryMessage = '';
@@ -1479,11 +1478,11 @@ export default class TetrisGame {
     this.victoryButton.y = 0;
     this.victoryButton.width = 0;
     this.victoryButton.height = 0;
-    
-    this.pengfuAnimation.stop();
-    
+
+    this.failLaughAnim.stop();
+
     this.resetGridForNewLevel();
-    
+
     if (this.musicManager) {
       this.musicManager.playRandom();
     }
@@ -1494,30 +1493,30 @@ export default class TetrisGame {
    */
   reviveByAd() {
     console.log('尝试通过广告复活...');
-    
+
     // 显示激励视频广告
     this.adManager.showRewardedAd(
       // 广告观看成功回调
       () => {
         console.log('广告观看成功，执行复活逻辑');
-        
+
         // 清除底部4行方块（提供更多空间）
         const blocksCleared = this.grid.clearBottomRows(4);
         console.log(`清除了 ${blocksCleared} 个方块`);
-        
+
         // 重置游戏状态
         this.gameOver = false;
         this.reviveUsed = true;
-        
+
         // 重新创建当前方块（使用现有的下一个方块）
         this.currentBlock = this.nextBlock;
         if (this.currentBlock) {
-      this.currentBlock.setPosition(Math.floor(this.grid.cols / 2) - 2, 0);
+          this.currentBlock.setPosition(Math.floor(this.grid.cols / 2) - 2, 0);
         }
-        
+
         // 生成新的下一个方块
         this.nextBlock = new Tetromino(Tetromino.randomType());
-        
+
         // 检查新方块是否可以放置
         if (this.currentBlock && !this.grid.isValidShapePosition(
           this.currentBlock.getShape(),
@@ -1536,7 +1535,7 @@ export default class TetrisGame {
             }
           }
         }
-        
+
         // 如果最终仍然无法放置，则游戏结束
         if (this.currentBlock && !this.grid.isValidShapePosition(
           this.currentBlock.getShape(),
@@ -1548,7 +1547,7 @@ export default class TetrisGame {
         } else {
           console.log('复活成功，游戏继续');
           // 停止死亡动画
-          this.pengfuAnimation.stop();
+          this.failLaughAnim.stop();
         }
       },
       // 广告观看失败回调
@@ -1565,10 +1564,10 @@ export default class TetrisGame {
   destroy() {
     // 销毁广告资源
     this.adManager.destroy();
-    
+
     // 停止死亡动画
-    this.pengfuAnimation.stop();
-    
+    this.failLaughAnim.stop();
+
     // 停止背景音乐
     if (this.musicManager) {
       this.musicManager.stop();

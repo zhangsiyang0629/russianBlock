@@ -1,0 +1,39 @@
+{
+  "frames": {
+    "failLaughFrame_0041": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 720,
+        "h": 720
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 720,
+        "h": 720
+      },
+      "sourceSize": {
+        "w": 720,
+        "h": 720
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "meta": {
+    "app": "https://www.flintbyte.com/",
+    "version": "1.0.0",
+    "image": "failLaugh-3.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 720,
+      "h": 720
+    },
+    "scale": 1
+  }
+}
