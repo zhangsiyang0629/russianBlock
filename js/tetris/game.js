@@ -1779,6 +1779,9 @@ export default class TetrisGame {
     this.victoryButton.visible = false;
     this.victoryQuitButton.visible = false;
 
+    // 分数清零，新关卡从0开始
+    this.score = 0;
+
     // 重置复活状态
     this.reviveUsed = false;
 
