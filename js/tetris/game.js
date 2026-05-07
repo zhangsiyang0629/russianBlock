@@ -6,7 +6,7 @@ import AdManager from './ad.js';
 import FailLaughAnimation from './failLaughAnim.js';
 import { saveOnLevelComplete, saveOnGameOver } from './playerData.js';
 import { drawRoundedRect } from './utils.js';
-import { EventScheduler, EVENT_CONFUSION, EVENT_INK, registerEvent, getEventHandler } from './events.js';
+import { EventScheduler, EVENT_CONFUSION, EVENT_INK, EVENT_BOOM, registerEvent, getEventHandler } from './events.js';
 import Effects from './effects.js';
 
 // 设计系统颜色（来自Google Stitch原型）
@@ -250,12 +250,128 @@ export default class TetrisGame {
       });
     }
 
+    // 炸弹事件
+    this.bombPhase = 'idle';
+    this.bombTimer = 0;
+    this.bombGridX = 0;
+    this.bombGridY = 0;
+    this.bombFallY = 0;
+    this.bombFuseFrame = 0;
+    this.bombFuseImages = [];
+    this.boomImage = null;
+    this.bombFallImage = null;
+    this.bombShakeOffX = 0;
+    this.bombShakeOffY = 0;
+    this.bombDebris = [];
+    this._bombFuseLoaded = false;
+    this._bombBlasted = false;
+    if (typeof wx !== 'undefined' && wx.createImage) {
+      const img = wx.createImage();
+      img.onload = () => { this.boomImage = img; };
+      img.src = 'subpackages/images/boom.png';
+      const fall = wx.createImage();
+      fall.onload = () => { this.bombFallImage = fall; };
+      fall.src = 'subpackages/images/bomb.png';
+      this.loadBoomFuseAtlases();
+    }
+    if (!getEventHandler(EVENT_BOOM)) {
+      registerEvent(EVENT_BOOM, () => { this.triggerBomb(); });
+    }
+
     // 初始化
     this.init();
   }
 
   init() {
     this.createNewBlock();
+  }
+
+  loadBoomFuseAtlases() {
+    if (typeof wx === 'undefined' || !wx.getFileSystemManager) return;
+    let i = 0;
+    while (true) {
+      try {
+        const data = wx.getFileSystemManager().readFileSync(`subpackages/animation/images/boom-${i}.json`, 'utf8');
+        JSON.parse(data);
+      } catch (e) { break; }
+      const img = wx.createImage();
+      img.src = `subpackages/animation/images/boom-${i}.png`;
+      this.bombFuseImages.push(img);
+      i++;
+    }
+    this._bombFuseLoaded = true;
+  }
+
+  triggerBomb() {
+    if (this.bombPhase !== 'idle') return;
+    const gridData = this.grid.getGridData();
+    let maxRow = -1;
+    for (let r = 0; r < this.grid.rows; r++) {
+      let hasBlock = false;
+      for (let c = 0; c < this.grid.cols; c++) {
+        if (gridData[r][c]) { hasBlock = true; break; }
+      }
+      if (hasBlock) maxRow = r;
+    }
+    const layers = maxRow + 1;
+    if (layers < 2) return;
+
+    const positions = [];
+    for (let r = 0; r <= maxRow; r++) {
+      for (let c = 0; c <= this.grid.cols - 2; c++) {
+        if (gridData[r][c] || gridData[r][c + 1]) {
+          positions.push({ x: c, y: r });
+        }
+      }
+    }
+    if (positions.length === 0) return;
+    const pos = positions[Math.floor(Math.random() * positions.length)];
+    pos.y = Math.max(0, pos.y - 1);
+
+    this.bombGridX = pos.x;
+    this.bombGridY = pos.y;
+    this.bombPhase = 'fall';
+    this.bombTimer = 0;
+    this.bombFallY = 0;
+    this.bombFuseFrame = 0;
+    this._bombBlasted = false;
+  }
+
+  executeBombBlast() {
+    const cx = this.bombGridX + 1;
+    const cy = this.bombGridY + 1;
+    const gridData = this.grid.getGridData();
+    const targets = [];
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        const r = cy + dr;
+        const c = cx + dc;
+        if (r >= 0 && r < this.grid.rows && c >= 0 && c < this.grid.cols) {
+          if (gridData[r][c]) targets.push({ r, c });
+        }
+      }
+    }
+    if (targets.length === 0) return;
+    const destroyCount = Math.min(targets.length, Math.floor(Math.random() * Math.min(21, targets.length)) + 5);
+    for (let i = targets.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [targets[i], targets[j]] = [targets[j], targets[i]];
+    }
+    const cell = this.grid.cellSize;
+    for (let i = 0; i < destroyCount; i++) {
+      const t = targets[i];
+      this.grid.setCell(t.r, t.c, 0);
+      this.bombDebris.push({
+        x: t.c * cell + cell / 2,
+        y: t.r * cell + cell / 2,
+        vx: (Math.random() - 0.5) * 200,
+        vy: -Math.random() * 200 - 100,
+        life: 1,
+        decay: Math.random() * 0.015 + 0.01,
+        size: Math.random() * cell * 0.5 + cell * 0.3,
+        color: ['#993d46', '#296654', '#75553e', '#ff8c94', '#b1efd8', '#fdd1b4', '#b02500'][Math.floor(Math.random() * 7)],
+      });
+    }
   }
 
   loadGameSettings() {
@@ -1052,6 +1168,56 @@ export default class TetrisGame {
       }
     }
 
+    if (this.bombPhase !== 'idle' && !this.paused) {
+      this.bombTimer += deltaTime;
+      if (this.bombPhase === 'fall') {
+        const fallMs = 500;
+        const t = Math.min(1, this.bombTimer / fallMs);
+        this.bombFallY = t;
+        if (this.bombTimer >= fallMs) {
+          this.bombPhase = 'fuse';
+          this.bombTimer = 0;
+        }
+      } else if (this.bombPhase === 'fuse') {
+        const fuseMs = 1000;
+        const total = this.bombFuseImages.length || 1;
+        this.bombFuseFrame = Math.floor(this.bombTimer / (fuseMs / total));
+        if (this.bombTimer >= fuseMs) {
+          this.bombPhase = 'expand';
+          this.bombTimer = 0;
+        }
+      } else if (this.bombPhase === 'expand') {
+        if (this.bombTimer >= 500) {
+          if (!this._bombBlasted) {
+            this._bombBlasted = true;
+            this.executeBombBlast();
+          }
+          this.bombPhase = 'shake';
+          this.bombTimer = 0;
+        }
+      } else if (this.bombPhase === 'shake') {
+        this.bombShakeOffX = (Math.random() - 0.5) * 8;
+        this.bombShakeOffY = (Math.random() - 0.5) * 8;
+        if (this.bombTimer >= 1000) {
+          this.bombPhase = 'fade';
+          this.bombTimer = 0;
+        }
+      } else if (this.bombPhase === 'fade') {
+        if (this.bombTimer >= 1000) {
+          this.bombPhase = 'idle';
+        }
+      }
+    }
+
+    for (let i = this.bombDebris.length - 1; i >= 0; i--) {
+      const d = this.bombDebris[i];
+      d.x += d.vx * deltaTime / 1000;
+      d.y += d.vy * deltaTime / 1000;
+      d.vy += 400 * deltaTime / 1000;
+      d.life -= d.decay;
+      if (d.life <= 0) this.bombDebris.splice(i, 1);
+    }
+
     if (this.gameOver || this.paused || this.showVictoryPopup) return;
 
     this.handleInput();
@@ -1191,6 +1357,59 @@ export default class TetrisGame {
         ctx.restore();
       }
       ctx.globalAlpha = 1;
+    }
+
+    if (this.bombPhase !== 'idle') {
+      const cell = this.grid.cellSize;
+      const bx = this.bombGridX * cell;
+      const bTargetY = this.bombGridY * cell;
+      const by = this.bombPhase === 'fall' ? -cell * 2 + bTargetY * this.bombFallY : bTargetY;
+      const bw = cell * 2;
+      const bh = cell * 2;
+
+      if (this.bombPhase === 'fall' && this.bombFallImage) {
+        const fallSize = Math.max(cell * 3, 30);
+        ctx.drawImage(this.bombFallImage, 0, 0, this.bombFallImage.width, this.bombFallImage.height,
+          bx + (bw - fallSize) / 2, by + (bh - fallSize) / 2, fallSize, fallSize);
+      }
+
+      if (this.bombPhase === 'fuse' && this._bombFuseLoaded) {
+        const img = this.bombFuseImages[this.bombFuseFrame % this.bombFuseImages.length];
+        if (img) {
+          ctx.drawImage(img, 0, 0, 720, 720, bx - bw * 0.3, by - bh * 0.3, bw * 1.6, bh * 1.6);
+        }
+      }
+
+      const boomSize = Math.max(this.ctx.canvas.width, this.ctx.canvas.height) / 3;
+
+      if (this.bombPhase === 'expand' && this.boomImage) {
+        const t = Math.min(1, this.bombTimer / 500);
+        const scale = 0.1 + t * 0.9;
+        const s = boomSize * scale;
+        ctx.drawImage(this.boomImage, 0, 0, this.boomImage.width, this.boomImage.height,
+          bx + (bw - s) / 2, by + (bh - s) / 2, s, s);
+      }
+
+      if ((this.bombPhase === 'shake' || this.bombPhase === 'fade') && this.boomImage) {
+        const alpha = this.bombPhase === 'fade' ? Math.max(0, 1 - this.bombTimer / 1000) : 1;
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(this.boomImage, 0, 0, this.boomImage.width, this.boomImage.height,
+          bx + (bw - boomSize) / 2 + this.bombShakeOffX,
+          by + (bh - boomSize) / 2 + this.bombShakeOffY,
+          boomSize, boomSize);
+        ctx.globalAlpha = 1;
+      }
+
+    for (const d of this.bombDebris) {
+      ctx.globalAlpha = Math.max(0, d.life);
+      ctx.fillStyle = d.color;
+      ctx.save();
+      ctx.translate(d.x, d.y);
+      ctx.rotate(d.life * 10);
+      ctx.fillRect(-d.size / 2, -d.size / 2, d.size, d.size);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
     }
 
     // 恢复画布状态
@@ -1818,6 +2037,8 @@ export default class TetrisGame {
     this.nextBlockConfused = false;
     this.smokeParticles = [];
     this.inkPhase = 'idle';
+    this.bombPhase = 'idle';
+    this.bombDebris = [];
     this.currentBlock = null;
     this.nextBlock = null;
     this.gameOver = false;

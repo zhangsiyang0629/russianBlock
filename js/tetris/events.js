@@ -1,5 +1,6 @@
 export const EVENT_CONFUSION = 1001;
 export const EVENT_INK = 1002;
+export const EVENT_BOOM = 1003;
 
 const registry = new Map();
 
@@ -19,6 +20,7 @@ const LEVEL_EVENT_CONFIGS = {
   5: { eventIds: [], triggerBlocks: [], triggerProbability: 0 },
   6: { eventIds: [EVENT_CONFUSION], triggerBlocks: [5, 8, 10], triggerProbability: 100 },
   7: { eventIds: [EVENT_INK], triggerBlocks: [5, 8, 10], triggerProbability: 100 },
+  8: { eventIds: [EVENT_BOOM], triggerBlocks: [8, 12, 15], triggerProbability: 100 },
 };
 
 export function getLevelEventConfig(level) {

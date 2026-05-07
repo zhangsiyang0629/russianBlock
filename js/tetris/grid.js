@@ -88,6 +88,16 @@ export default class Grid {
     return true;
   }
 
+  getGridData() {
+    return this.grid;
+  }
+
+  setCell(row, col, value) {
+    if (row >= 0 && row < this.rows && col >= 0 && col < this.cols) {
+      this.grid[row][col] = value;
+    }
+  }
+
   /**
    * 将方块放置到网格中
    */
