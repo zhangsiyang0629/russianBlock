@@ -7,6 +7,7 @@ import FailLaughAnimation from './failLaughAnim.js';
 import { saveOnLevelComplete, saveOnGameOver } from './playerData.js';
 import { drawRoundedRect } from './utils.js';
 import { EventScheduler, EVENT_CONFUSION, EVENT_INK, registerEvent, getEventHandler } from './events.js';
+import Effects from './effects.js';
 
 // 设计系统颜色（来自Google Stitch原型）
 const COLORS = {
@@ -215,6 +216,7 @@ export default class TetrisGame {
     // 事件系统
     this.eventScheduler = new EventScheduler(this.level);
     this.nextBlockConfused = false;
+    this.victoryEffects = new Effects();
     this.smokeImage = null;
     this.smokeParticles = [];
     if (typeof wx !== 'undefined' && wx.createImage) {
@@ -1011,6 +1013,11 @@ export default class TetrisGame {
    * 更新游戏逻辑
    */
   update(deltaTime) {
+    // 更新胜利烟花特效
+    if (this.showVictoryPopup) {
+      this.victoryEffects.tick(this.ctx.canvas.width, this.ctx.canvas.height);
+    }
+
     // 更新死亡动画（无论游戏状态如何）
     this.failLaughAnim.update(Date.now());
 
@@ -1197,8 +1204,13 @@ export default class TetrisGame {
     }
 
     // 渲染游戏信息（游戏结束弹窗）
-    // 使用固定位置，因为弹窗会覆盖整个屏幕
     this.renderGameInfo(0, 0);
+
+    // 胜利烟花特效
+    if (this.showVictoryPopup) {
+      this.victoryEffects.renderFireworks(ctx);
+      this.victoryEffects.renderClickRipples(ctx);
+    }
 
     // 渲染底部控制按钮
     this.renderControlButtons();
@@ -1778,6 +1790,7 @@ export default class TetrisGame {
     this.showVictoryPopup = false;
     this.victoryButton.visible = false;
     this.victoryQuitButton.visible = false;
+    this.victoryEffects.clear();
 
     // 分数清零，新关卡从0开始
     this.score = 0;
@@ -1818,6 +1831,7 @@ export default class TetrisGame {
 
     this.reviveUsed = false;
     this.showVictoryPopup = false;
+    this.victoryEffects.clear();
     this.victoryMessage = '';
     this.victoryButton.visible = false;
     this.victoryButton.x = 0;
