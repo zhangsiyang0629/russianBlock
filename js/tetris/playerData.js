@@ -194,12 +194,12 @@ async function saveOnLevelComplete(level, score, oldHighScore) {
   return result;
 }
 
-async function saveOnGameOver(score, oldHighScore) {
+async function saveOnGameOver(score, oldHighScore, gameMode = 'level') {
   const newHighScore = Math.max(score, oldHighScore || 0);
   const result = await updatePlayerData({
     highScore: newHighScore
   });
-  syncRanking({ highScore: newHighScore });
+  syncRanking({ highScore: newHighScore, gameMode });
   return result;
 }
 
@@ -223,6 +223,7 @@ async function syncRanking(fields = {}) {
       avatarUrl: fields.avatarUrl || playerData.avatarUrl,
       highScore: fields.highScore !== undefined ? fields.highScore : playerData.highScore,
       level: fields.level !== undefined ? fields.level : playerData.level,
+      gameMode: fields.gameMode || 'level',
     };
     
     if (typeof wx !== 'undefined' && wx.cloud) {

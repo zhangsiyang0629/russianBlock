@@ -62,13 +62,16 @@ export default class Main {
     // 初始化封面
     this.cover = new Cover(this.ctx, () => {
       const info = this.energyManager.getEnergyInfo();
-      //console.log('体力信息:', info);
       return info;
     }, (action, data) => {
-      // 处理隐私协议相关操作
       this.handleCoverPrivacyAction(action, data);
-    }, this.musicManager);
+    }, this.musicManager, () => {
+      return this.playerData ? this.playerData.level : 1;
+    });
     
+    // 预加载玩家数据
+    getOrCreatePlayerData().then(data => { this.playerData = data; }).catch(() => {});
+
     // 从云数据库同步体力数据
     this.syncEnergyFromCloud();
     
@@ -474,6 +477,8 @@ export default class Main {
       const clickedId = this.cover.handleClick(x, y);
       if (clickedId === 'play') {
         this.startGame();
+      } else if (clickedId === 'infinite') {
+        this.startInfiniteGame();
       } else if (clickedId === 'scoresNav') {
         this.handleRankEntry('score');
       } else if (clickedId === 'levelsNav') {
@@ -579,6 +584,25 @@ export default class Main {
       this.returnToCover();
     } finally {
       // 重置启动标志
+      this.isStartingGame = false;
+    }
+  }
+
+  async startInfiniteGame() {
+    if (this.currentState === 'game' || this.isStartingGame) return;
+    this.isStartingGame = true;
+    if (!this.energyManager.hasEnoughEnergy()) { this.isStartingGame = false; return; }
+    this.energyManager.consumeEnergy();
+    if (this.cover) this.cover.hide(true);
+    this.stopMainLoop();
+    try {
+      this.game = new TetrisGame(this.ctx, 1, 0, this.musicManager, 'infinite');
+      this.game.onQuit = () => { this.returnToCover(); };
+      this.game.start();
+      this.currentState = 'game';
+    } catch (error) {
+      this.returnToCover();
+    } finally {
       this.isStartingGame = false;
     }
   }

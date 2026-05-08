@@ -174,7 +174,7 @@ export default class RankPanel {
       const db = wx.cloud.database();
       const _ = db.command;
       const orderField = type === 'score' ? 'highScore' : 'level';
-      const filter = type === 'score' ? { highScore: _.gt(0) } : { level: _.gt(1) };
+      const filter = type === 'score' ? { gameMode: 'infinite', highScore: _.gt(0) } : { gameMode: 'level', level: _.gt(1) };
       const res = await db.collection('rankings')
         .where(filter)
         .orderBy(orderField, 'desc')

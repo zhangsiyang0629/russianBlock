@@ -7,10 +7,11 @@ import { drawRoundedRect } from './tetris/utils';
 import Effects from './tetris/effects';
 
 export default class Cover {
-  constructor(ctx, getEnergyInfo = null, onPrivacyAction = null, musicManager = null) {
+  constructor(ctx, getEnergyInfo = null, onPrivacyAction = null, musicManager = null, getPlayerLevel = null) {
     this.ctx = ctx;
     this.canvas = ctx.canvas;
     this.musicManager = musicManager;
+    this.getPlayerLevel = getPlayerLevel;
     
     // 封面状态
     this.active = true;
@@ -24,8 +25,10 @@ export default class Cover {
     
     // 按钮定义
     this.buttons = [
-      { id: 'play', text: 'PLAY', x: 0, y: 0, width: 0, height: 0, color: '#FFB347' }
+      { id: 'play', text: 'PLAY', x: 0, y: 0, width: 0, height: 0, color: '#FFB347' },
+      { id: 'infinite', text: 'INFINITE', x: 0, y: 0, width: 0, height: 0, color: '#a3e1ca' },
     ];
+    this.infiniteTooltip = { active: false, timer: 0, alpha: 0 };
     
     // 底部导航
     this.navItems = [
@@ -744,6 +747,52 @@ export default class Cover {
     
     this.drawButton(ctx, playButton, 0, buttonColor, textColor, isDisabled);
     
+    // Infinite 按钮（Play按钮下方）
+    const infButton = this.buttons[1];
+    const infBtnW = 280;
+    const infBtnH = 60;
+    infButton.x = centerX - infBtnW / 2;
+    infButton.y = buttonStartY + playButtonHeight + 16;
+    infButton.width = infBtnW;
+    infButton.height = infBtnH;
+
+    const isUnlocked = this.getPlayerLevel ? this.getPlayerLevel() > 7 : false;
+    const infColor = isUnlocked ? infButton.color : '#b2ad9c';
+    const infTextColor = isUnlocked ? '#322f22' : '#7b7767';
+    infButton.text = isUnlocked ? 'INFINITE' : '🔒 INFINITE';
+    this.drawButton(ctx, infButton, 0, infColor, infTextColor, !isUnlocked);
+
+    // 未解锁气泡提示
+    if (this.infiniteTooltip.active) {
+      this.infiniteTooltip.timer += 32;
+      if (this.infiniteTooltip.timer < 200) {
+        this.infiniteTooltip.alpha = this.infiniteTooltip.timer / 200;
+      } else if (this.infiniteTooltip.timer < 2000) {
+        this.infiniteTooltip.alpha = 1;
+      } else if (this.infiniteTooltip.timer < 2400) {
+        this.infiniteTooltip.alpha = 1 - (this.infiniteTooltip.timer - 2000) / 400;
+      } else {
+        this.infiniteTooltip.active = false;
+      }
+
+      if (this.infiniteTooltip.alpha > 0) {
+        const tx = infButton.x + infButton.width / 2;
+        const ty = infButton.y - 12;
+        ctx.save();
+        ctx.globalAlpha = this.infiniteTooltip.alpha;
+        ctx.fillStyle = 'rgba(0,0,0,0.75)';
+        drawRoundedRect(ctx, tx - 80, ty - 18, 160, 28, 8);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '13px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('通关第7关解锁', tx, ty + 1);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+    }
+
     // 绘制隐私协议（授权未完成时）
     this.drawPrivacyAgreement(ctx, canvas, playButton);
   }
@@ -756,7 +805,6 @@ export default class Cover {
     const checkboxSize = this.privacyCheckbox.size;
     const isAgreed = this.getPrivacyAgreed();
     
-    // 计算整个隐私协议区域的宽度
     ctx.font = '12px Arial';
     const prefixText = '我已详细阅读并同意';
     const prefixWidth = ctx.measureText(prefixText).width;
@@ -767,13 +815,14 @@ export default class Cover {
     const privacyLink = this.privacyLinks.privacy;
     const privacyWidth = ctx.measureText(privacyLink.text).width;
     
-    // 整个区域的宽度 = 勾选框 + 间隔 + 文本总宽度
     const totalWidth = checkboxSize + 10 + prefixWidth + termsWidth + andWidth + privacyWidth;
     
-    // 计算起始x坐标，使整个区域居中
     const startX = (canvas.width - totalWidth) / 2;
     const checkboxX = startX;
-    const checkboxY = playButton.y + playButton.height + 30; // PLAY按钮下方30像素
+    const infButton = this.buttons[1];
+    const baseY = infButton.y + infButton.height + 12;
+    const maxY = canvas.height - 85;
+    const checkboxY = Math.min(baseY, maxY);
     
     // 更新勾选框坐标
     this.privacyCheckbox.x = checkboxX;
@@ -883,9 +932,9 @@ export default class Cover {
     ctx.stroke();
     
     // 绘制按钮文字
-    const txtColor = textColor || (button.id === 'play' ? '#ffffff' : '#322f22');
+    const txtColor = textColor || (button.id === 'play' || button.id === 'infinite' ? '#ffffff' : '#322f22');
     ctx.fillStyle = txtColor;
-    ctx.font = button.id === 'play' ? 'bold 32px Arial' : 'bold 18px Arial';
+    ctx.font = (button.id === 'play' || button.id === 'infinite') ? 'bold 32px Arial' : 'bold 18px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(
@@ -975,12 +1024,26 @@ export default class Cover {
           y >= button.y && y <= button.y + button.height) {
         console.log(`点击按钮: ${button.id}`);
         
-        // 特殊处理PLAY按钮：检查体力
         if (button.id === 'play') {
           if (this.getEnergyInfo) {
             const energyInfo = this.getEnergyInfo();
             if (energyInfo && !energyInfo.hasEnough) {
-              console.warn('体力不足，无法开始游戏');
+              return null;
+            }
+          }
+        }
+
+        if (button.id === 'infinite') {
+          const isUnlocked = this.getPlayerLevel ? this.getPlayerLevel() > 7 : false;
+          if (!isUnlocked) {
+            this.infiniteTooltip.active = true;
+            this.infiniteTooltip.timer = 0;
+            this.infiniteTooltip.alpha = 0;
+            return null;
+          }
+          if (this.getEnergyInfo) {
+            const energyInfo = this.getEnergyInfo();
+            if (energyInfo && !energyInfo.hasEnough) {
               return null;
             }
           }

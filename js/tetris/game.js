@@ -99,11 +99,20 @@ const LEVEL_CONFIG = {
 
 // 分数配置（便于调试与调整）
 const SCORE_CONFIG = {
-  // 消行得分（0-4行）
-  lineClearPoints: [0, 10, 25, 50, 80],
-  // 升级所需分数
+  lineClearPoints: [0, 100, 300, 500, 800],
   levelUpThreshold: 200,
 };
+
+// 无尽模式速度配置
+const INFINITE_SPEED_LEVELS = [
+  { score: 0, speed: 1.0 },
+  { score: 300, speed: 1.1 },
+  { score: 800, speed: 1.2 },
+  { score: 1500, speed: 1.3 },
+  { score: 2500, speed: 1.4 },
+  { score: 4000, speed: 1.5 },
+  { score: 6000, speed: 1.6 },
+];
 
 // 设计效果
 const EFFECTS = {
@@ -118,11 +127,12 @@ const EFFECTS = {
  * 俄罗斯方块游戏主类
  */
 export default class TetrisGame {
-  constructor(ctx, savedLevel = 1, savedHighScore = 0, musicManager = null) {
+  constructor(ctx, savedLevel = 1, savedHighScore = 0, musicManager = null, gameMode = 'level') {
     this.ctx = ctx;
     const canvas = ctx.canvas;
-
+    
     this.musicManager = musicManager;
+    this.gameMode = gameMode;
 
     // 广告管理器
     this.adManager = new AdManager();
@@ -137,25 +147,34 @@ export default class TetrisGame {
     this.gameOver = false;
     this.paused = false;
     this.score = 0;
-    this.level = savedLevel; // 从玩家数据加载的关卡
-    this.highScore = savedHighScore; // 从玩家数据加载的最高分
+    this.level = savedLevel;
+    this.highScore = savedHighScore;
     this.linesCleared = 0;
-    this.updateLevelConfig();
 
-    // 根据当前网格尺寸计算合适的单元格大小
-    const gridSize = GRID_SIZES[this.gridSizeIndex];
-    const maxCellSizeByWidth = Math.floor(this.availableWidth / gridSize.cols); // 根据列数
-    const maxCellSizeByHeight = Math.floor(this.availableHeight / gridSize.rows); // 根据行数
-    const cellSize = Math.min(maxCellSizeByWidth, maxCellSizeByHeight, 30); // 最大30px保持清晰度
-    // 优先确保网格能放入可用空间，不强制最小15px
-    const safeCellSize = Math.max(8, cellSize); // 最小8px确保基本可视性
+    let gridCols, gridRows;
+    if (this.gameMode === 'infinite') {
+      this.infiniteSpeedIdx = 0;
+      gridCols = 15;
+      gridRows = 23;
+    } else {
+      this.updateLevelConfig();
+      const gridSize = GRID_SIZES[this.gridSizeIndex];
+      gridCols = gridSize.cols;
+      gridRows = gridSize.rows;
+    }
 
-    console.log(`布局计算: 屏幕=${canvas.width}x${canvas.height}, 广告高=${this.adHeight}, 底部高=${this.bottomHeight}, 可用高=${this.availableHeight}, 网格尺寸=${gridSize.cols}x${gridSize.rows}, cellSize=${safeCellSize}, 网格高=${gridSize.rows * safeCellSize}`);
+    const maxCellSizeByWidth = Math.floor(this.availableWidth / gridCols);
+    const maxCellSizeByHeight = Math.floor(this.availableHeight / gridRows);
+    const cellSize = Math.min(maxCellSizeByWidth, maxCellSizeByHeight, 30);
+    const safeCellSize = Math.max(8, cellSize);
 
-    this.cellSize = safeCellSize; // 保存单元格大小用于重置
-    this.grid = new Grid(safeCellSize, gridSize.cols, gridSize.rows);
+    console.log(`布局计算: 屏幕=${canvas.width}x${canvas.height}, 网格尺寸=${gridCols}x${gridRows}, cellSize=${safeCellSize}`);
+
+    this.cellSize = safeCellSize;
+    this.grid = new Grid(safeCellSize, gridCols, gridRows);
     this.currentBlock = null;
     this.nextBlock = null;
+    this.speedUpText = { active: false, timer: 0, alpha: 0, scale: 0.8 };
 
     // 关卡难度配置
     this.gridSizeIndex = 0; // i (0-based) 对应 GRID_SIZES 索引
@@ -286,8 +305,11 @@ export default class TetrisGame {
     this.createNewBlock();
   }
 
-  loadBoomFuseAtlases() {
+  async loadBoomFuseAtlases() {
     if (typeof wx === 'undefined' || !wx.getFileSystemManager) return;
+    if (typeof wx !== 'undefined' && wx.loadSubpackage) {
+      try { await new Promise((r, j) => wx.loadSubpackage({ name: 'animation', success: r, fail: j })); } catch (e) { return; }
+    }
     let i = 0;
     while (true) {
       try {
@@ -526,7 +548,7 @@ export default class TetrisGame {
       if (this.score > this.highScore) {
         this.highScore = this.score;
       }
-      saveOnGameOver(this.score, this.highScore);
+      saveOnGameOver(this.score, this.highScore, this.gameMode);
 
       // 播放死亡动画（屏幕右下角）
       const canvas = this.ctx.canvas;
@@ -601,7 +623,7 @@ export default class TetrisGame {
     ctx.fillStyle = COLORS.onSurfaceVariant;
     ctx.font = 'bold 5px Arial';
     ctx.textBaseline = 'top';
-    ctx.fillText(`STAGE ${this.level}`, scoreCardWidth / 2, scoreCardHeight - 8);
+    ctx.fillText(this.gameMode === 'infinite' ? 'INFINITE' : `STAGE ${this.level}`, scoreCardWidth / 2, scoreCardHeight - 8);
 
     ctx.restore();
 
@@ -783,13 +805,18 @@ export default class TetrisGame {
     ctx.font = 'bold 7px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText('LEVEL', levelCardWidth / 2, 5);
+    ctx.fillText(this.gameMode === 'infinite' ? 'MODE' : 'LEVEL', levelCardWidth / 2, 5);
 
     // 关卡数字（大号显示）
     ctx.fillStyle = COLORS.primary;
-    ctx.font = 'bold 16px Arial';
     ctx.textBaseline = 'middle';
-    ctx.fillText(this.level.toString(), levelCardWidth / 2, levelCardHeight / 2 + 3);
+    if (this.gameMode === 'infinite') {
+      ctx.font = 'bold 32px Arial';
+      ctx.fillText('∞', levelCardWidth / 2, levelCardHeight / 2 + 2);
+    } else {
+      ctx.font = 'bold 16px Arial';
+      ctx.fillText(this.level.toString(), levelCardWidth / 2, levelCardHeight / 2 + 3);
+    }
 
     // 网格尺寸显示
     const gridSize = GRID_SIZES[this.gridSizeIndex];
@@ -797,8 +824,15 @@ export default class TetrisGame {
     ctx.fillStyle = COLORS.onSurfaceVariant;
     ctx.font = 'bold 5px Arial';
     ctx.textBaseline = 'top';
-    const gridInfo = `${gridSize.cols}×${gridSize.rows}`;
-    const speedInfo = `${speedRate.toFixed(2)}×`;
+    let gridInfo, speedInfo;
+    if (this.gameMode === 'infinite') {
+      gridInfo = `${this.grid.cols}×${this.grid.rows}`;
+      const speedVal = INFINITE_SPEED_LEVELS[this.infiniteSpeedIdx].speed;
+      speedInfo = `${speedVal.toFixed(1)}×`;
+    } else {
+      gridInfo = `${gridSize.cols}×${gridSize.rows}`;
+      speedInfo = `${speedRate.toFixed(2)}×`;
+    }
     ctx.fillText(gridInfo, levelCardWidth / 2, levelCardHeight - 15);
     ctx.fillText(speedInfo, levelCardWidth / 2, levelCardHeight - 8);
 
@@ -1079,6 +1113,9 @@ export default class TetrisGame {
       const points = this.calculateScore(lines);
       this.score += points;
       this.updateLevel();
+      if (this.gameMode === 'infinite') {
+        this.updateInfiniteSpeed();
+      }
     }
 
     this.createNewBlock();
@@ -1089,6 +1126,21 @@ export default class TetrisGame {
    */
   calculateScore(lines) {
     return SCORE_CONFIG.lineClearPoints[lines];
+  }
+
+  updateInfiniteSpeed() {
+    let newIdx = 0;
+    for (let i = INFINITE_SPEED_LEVELS.length - 1; i >= 0; i--) {
+      if (this.score >= INFINITE_SPEED_LEVELS[i].score) { newIdx = i; break; }
+    }
+    if (newIdx !== this.infiniteSpeedIdx) {
+      this.infiniteSpeedIdx = newIdx;
+      this.dropInterval = Math.floor(1000 / INFINITE_SPEED_LEVELS[newIdx].speed);
+      this.speedUpText.active = true;
+      this.speedUpText.timer = 0;
+      this.speedUpText.alpha = 0;
+      this.speedUpText.scale = 0.8;
+    }
   }
 
   /**
@@ -1216,6 +1268,21 @@ export default class TetrisGame {
       d.vy += 400 * deltaTime / 1000;
       d.life -= d.decay;
       if (d.life <= 0) this.bombDebris.splice(i, 1);
+    }
+
+    if (this.speedUpText.active) {
+      this.speedUpText.timer += deltaTime;
+      if (this.speedUpText.timer < 300) {
+        this.speedUpText.alpha = this.speedUpText.timer / 300;
+        this.speedUpText.scale = 0.8 + 0.2 * (this.speedUpText.timer / 300);
+      } else if (this.speedUpText.timer < 1300) {
+        this.speedUpText.alpha = 1;
+        this.speedUpText.scale = 1;
+      } else if (this.speedUpText.timer < 1600) {
+        this.speedUpText.alpha = 1 - (this.speedUpText.timer - 1300) / 300;
+      } else {
+        this.speedUpText.active = false;
+      }
     }
 
     if (this.gameOver || this.paused || this.showVictoryPopup) return;
@@ -1462,6 +1529,23 @@ export default class TetrisGame {
 
     if (this.showingGameSettings) {
       this.renderGameSettingsDialog();
+    }
+
+    if (this.speedUpText.active) {
+      ctx.globalAlpha = this.speedUpText.alpha;
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 3);
+      ctx.scale(this.speedUpText.scale, this.speedUpText.scale);
+      ctx.fillStyle = '#FFD700';
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 4;
+      ctx.font = 'bold 44px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeText('SPEED UP !!!', 0, 0);
+      ctx.fillText('SPEED UP !!!', 0, 0);
+      ctx.restore();
+      ctx.globalAlpha = 1;
     }
   }
 
