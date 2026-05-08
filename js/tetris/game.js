@@ -99,7 +99,7 @@ const LEVEL_CONFIG = {
 
 // 分数配置（便于调试与调整）
 const SCORE_CONFIG = {
-  lineClearPoints: [0, 100, 300, 500, 800],
+  lineClearPoints: [0, 10, 25, 50, 80],
   levelUpThreshold: 200,
 };
 
@@ -130,7 +130,7 @@ export default class TetrisGame {
   constructor(ctx, savedLevel = 1, savedHighScore = 0, musicManager = null, gameMode = 'level') {
     this.ctx = ctx;
     const canvas = ctx.canvas;
-    
+
     this.musicManager = musicManager;
     this.gameMode = gameMode;
 
@@ -405,11 +405,11 @@ export default class TetrisGame {
         if (typeof saved.sfxOn === 'boolean') this.gameSettings.sfxOn = saved.sfxOn;
         if (typeof saved.sfxVolume === 'number') this.gameSettings.sfxVolume = saved.sfxVolume;
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   saveGameSettings() {
-    try { wx.setStorageSync('coverSettings', this.gameSettings); } catch (e) {}
+    try { wx.setStorageSync('coverSettings', this.gameSettings); } catch (e) { }
   }
 
   /**
@@ -1101,7 +1101,6 @@ export default class TetrisGame {
     this.grid.placeShape(shape, x, y, color);
 
     const eventId = this.eventScheduler.onBlockLanded();
-    console.log("eventId=", eventId)
     if (eventId) {
       const handler = getEventHandler(eventId);
       if (handler) handler();
@@ -1443,7 +1442,7 @@ export default class TetrisGame {
       if (this.bombPhase === 'fuse' && this._bombFuseLoaded) {
         const img = this.bombFuseImages[this.bombFuseFrame % this.bombFuseImages.length];
         if (img) {
-          ctx.drawImage(img, 0, 0, 720, 720, bx - bw * 0.3, by - bh * 0.3, bw * 1.6, bh * 1.6);
+          ctx.drawImage(img, 0, 0, img.width, img.height, bx - bw * 0.3, by - bh * 0.3, bw * 1.6, bh * 1.6);
         }
       }
 
@@ -1467,16 +1466,16 @@ export default class TetrisGame {
         ctx.globalAlpha = 1;
       }
 
-    for (const d of this.bombDebris) {
-      ctx.globalAlpha = Math.max(0, d.life);
-      ctx.fillStyle = d.color;
-      ctx.save();
-      ctx.translate(d.x, d.y);
-      ctx.rotate(d.life * 10);
-      ctx.fillRect(-d.size / 2, -d.size / 2, d.size, d.size);
-      ctx.restore();
-    }
-    ctx.globalAlpha = 1;
+      for (const d of this.bombDebris) {
+        ctx.globalAlpha = Math.max(0, d.life);
+        ctx.fillStyle = d.color;
+        ctx.save();
+        ctx.translate(d.x, d.y);
+        ctx.rotate(d.life * 10);
+        ctx.fillRect(-d.size / 2, -d.size / 2, d.size, d.size);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
     }
 
     // 恢复画布状态

@@ -50,11 +50,13 @@ export class EventScheduler {
 
   onBlockLanded() {
     this.blockCount++;
+    // console.log("this.blockCount:", this.blockCount, "this.currentInterval:", this.currentInterval)
     if (this.blockCount < this.currentInterval) return null;
 
     this.blockCount = 0;
     this.pickNextInterval();
 
+    // console.log("this.config.triggerProbability:", this.config.triggerProbability)
     if (Math.random() * 100 >= this.config.triggerProbability) return null;
 
     let ids = this.config.eventIds;

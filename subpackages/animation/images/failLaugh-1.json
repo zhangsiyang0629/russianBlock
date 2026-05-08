@@ -1,23 +1,23 @@
 {
   "frames": {
-    "failLaughFrame_0059": {
+    "failLaughFrame_0047": {
       "frame": {
         "x": 0,
         "y": 0,
-        "w": 720,
-        "h": 720
+        "w": 216,
+        "h": 216
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 720,
-        "h": 720
+        "w": 216,
+        "h": 216
       },
       "sourceSize": {
-        "w": 720,
-        "h": 720
+        "w": 216,
+        "h": 216
       },
       "pivot": {
         "x": 0.5,
@@ -31,8 +31,8 @@
     "image": "failLaugh-1.png",
     "format": "RGBA8888",
     "size": {
-      "w": 720,
-      "h": 720
+      "w": 216,
+      "h": 216
     },
     "scale": 1
   }

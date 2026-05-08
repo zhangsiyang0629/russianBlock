@@ -13,8 +13,8 @@ export default class FailLaughAnimation {
     this.resourcesLoaded = false;
     this.pendingPlay = null;
     this.images = [];
-    this.frameW = 720;
-    this.frameH = 720;
+    this.frameW = 1;
+    this.frameH = 1;
     this.cropRatio = 3.4 / 5;
     this.totalLoops = 0;
     this.maxLoops = 3;
@@ -52,8 +52,19 @@ export default class FailLaughAnimation {
     const fs = wx.getFileSystemManager();
     while (true) {
       try {
-        const data = fs.readFileSync(`subpackages/animation/images/failLaugh-${index}.json`, 'utf8');
-        JSON.parse(data);
+        const raw = fs.readFileSync(`subpackages/animation/images/failLaugh-${index}.json`, 'utf8');
+        const json = JSON.parse(raw);
+        if (index === 0) {
+          const frameKeys = Object.keys(json.frames);
+          if (frameKeys.length > 0) {
+            const f = json.frames[frameKeys[0]].frame;
+            this.frameW = f.w;
+            this.frameH = f.h;
+          } else if (json.meta && json.meta.size) {
+            this.frameW = json.meta.size.w;
+            this.frameH = json.meta.size.h;
+          }
+        }
         index++;
       } catch (e) {
         break;
