@@ -187,6 +187,9 @@ export default class TetrisGame {
     this.currentBlock = null;
     this.nextBlock = null;
     this.speedUpText = { active: false, timer: 0, alpha: 0, scale: 0.8 };
+    this._skipTalk = false;
+    this._talkPrevGrid = undefined;
+    this._talkPrevSpeed = undefined;
 
     // 关卡难度配置
     this.gridSizeIndex = 0; // i (0-based) 对应 GRID_SIZES 索引
@@ -241,6 +244,15 @@ export default class TetrisGame {
 
     // 动画实例
     this.failLaughAnim = new FailLaughAnimation();
+
+    this.talkPhase = 'idle';
+    this.talkTimer = 0;
+    this.talkFrame = 0;
+    this.talkImages = [];
+    this.talkText = '';
+    this.talkColor = '';
+    this._talkLoaded = false;
+    this.loadTalkAtlases();
 
     // 事件系统
     this.eventScheduler = new EventScheduler(this.level);
@@ -332,6 +344,45 @@ export default class TetrisGame {
       i++;
     }
     this._bombFuseLoaded = true;
+  }
+
+  async loadTalkAtlases() {
+    if (typeof wx === 'undefined' || !wx.getFileSystemManager) return;
+    if (typeof wx !== 'undefined' && wx.loadSubpackage) {
+      try { await new Promise((r, j) => wx.loadSubpackage({ name: 'animation', success: r, fail: j })); } catch (e) { return; }
+    }
+    let i = 0;
+    while (true) {
+      try {
+        wx.getFileSystemManager().readFileSync(`subpackages/animation/images/talk-${i}.json`, 'utf8');
+      } catch (e) { break; }
+      const img = wx.createImage();
+      img.src = `subpackages/animation/images/talk-${i}.png`;
+      this.talkImages.push(img);
+      i++;
+    }
+    this._talkLoaded = true;
+  }
+
+  startTalk(prevLevel, prevGridSizeIdx, prevSpeedIdx) {
+    this.talkPhase = 'talking';
+    this.talkTimer = 0;
+    this.talkFrame = 0;
+    const config = this.gameMode === 'infinite' ? null : this.calculateLevelConfig(this.level);
+    const curSpeed = config ? SPEED_RATES[config.speedIndex] : 1;
+    const curGrid = config ? GRID_SIZES[config.gridSizeIndex] : { cols: this.grid.cols, rows: this.grid.rows };
+    const prevSpeed = prevSpeedIdx !== undefined ? SPEED_RATES[prevSpeedIdx] : 1;
+    const prevGrid = prevGridSizeIdx !== undefined ? GRID_SIZES[prevGridSizeIdx] : curGrid;
+    if (curSpeed > prevSpeed) {
+      this.talkText = 'SPEED UP !!!';
+      this.talkColor = '#FF3333';
+    } else if (curGrid.cols > prevGrid.cols || curGrid.rows > prevGrid.rows) {
+      this.talkText = 'BIG BIG !!!';
+      this.talkColor = '#FF8800';
+    } else {
+      this.talkText = 'GOOD LUCK';
+      this.talkColor = '#33AA33';
+    }
   }
 
   triggerBomb() {
@@ -513,7 +564,6 @@ export default class TetrisGame {
    * 启动游戏（开始游戏循环和输入监听）
    */
   start() {
-    // 如果游戏循环已经在运行，先停止
     if (this.aniId) {
       cancelAnimationFrame(this.aniId);
       this.aniId = null;
@@ -522,6 +572,10 @@ export default class TetrisGame {
     if (this.musicManager) {
       this.musicManager.playRandom();
     }
+    if (!this._skipTalk) {
+      this.startTalk(this.level - 1, undefined, undefined);
+    }
+    this._skipTalk = false;
     this.gameLoop(0);
   }
 
@@ -1142,10 +1196,13 @@ export default class TetrisGame {
     const threshold = LEVEL_UP_SCORES[this.level] !== undefined ? LEVEL_UP_SCORES[this.level] : SCORE_CONFIG.levelUpThreshold;
     if (this.score >= threshold) {
       const oldLevel = this.level;
+      const oldGridIdx = this.gridSizeIndex;
+      const oldSpeedIdx = this.speedIndex;
       this.level = this.level + 1;
 
-      // 更新难度配置
       this.updateLevelConfig();
+      this._talkPrevGrid = oldGridIdx;
+      this._talkPrevSpeed = oldSpeedIdx;
       this.eventScheduler.reset(this.level);
 
       // 重置网格以适应新关卡
@@ -1275,6 +1332,23 @@ export default class TetrisGame {
       } else {
         this.speedUpText.active = false;
       }
+    }
+
+    if (this.talkPhase !== 'idle') {
+      if (this.paused) return;
+      this.talkTimer += deltaTime;
+      if (this.talkPhase === 'talking') {
+        this.talkFrame = Math.floor(this.talkTimer / (3000 / Math.max(1, this.talkImages.length))) % Math.max(1, this.talkImages.length);
+        if (this.talkTimer >= 3000) {
+          this.talkPhase = 'fading';
+          this.talkTimer = 0;
+        }
+      } else if (this.talkPhase === 'fading') {
+        if (this.talkTimer >= 500) {
+          this.talkPhase = 'idle';
+        }
+      }
+      return;
     }
 
     if (this.gameOver || this.paused || this.showVictoryPopup) return;
@@ -1509,6 +1583,50 @@ export default class TetrisGame {
       ctx.drawImage(this.inkImage,
         0, 0, this.inkImage.width, this.inkImage.height,
         (canvas.width - iw) / 2, (canvas.height - ih) / 2, iw, ih);
+      ctx.globalAlpha = 1;
+    }
+
+    // 渲染说话动画
+    if (this.talkPhase !== 'idle' && this.talkImages.length > 0) {
+      const alpha = this.talkPhase === 'fading' ? Math.max(0, 1 - this.talkTimer / 500) : 1;
+      ctx.globalAlpha = alpha;
+
+      const cell = this.grid.cellSize;
+      const ch = cell * 8;
+      const cw = ch * (144 / 256);
+      const img = this.talkImages[this.talkFrame % this.talkImages.length];
+      if (img) {
+        ctx.drawImage(img, 0, 0, img.width, img.height, offsetX + 6, offsetY + gridHeight - ch - 4, cw, ch);
+      }
+
+      const bubbleX = offsetX + 76;
+      const bubbleY = offsetY + gridHeight - ch - 4 - 30;
+      ctx.font = 'bold 22px Arial';
+      const tw = ctx.measureText(this.talkText).width;
+      const padX = 20;
+      const bw = Math.min((tw + padX * 2) * 0.9, gridWidth * 0.7);
+      const bh = 50;
+      const bx = Math.min(bubbleX, offsetX + gridWidth - bw - 6);
+      const by = Math.max(bubbleY, offsetY);
+
+      const rx = bw / 2;
+      const ry = bh / 2;
+      const ecx = bx + rx;
+      const ecy = by + ry;
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(ecx, ecy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = this.talkColor;
+      ctx.font = 'bold 22px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.talkText, bx + bw / 2, by + bh / 2);
+
       ctx.globalAlpha = 1;
     }
 
@@ -2002,6 +2120,7 @@ export default class TetrisGame {
     // 分数清零，新关卡从0开始
     this.score = 0;
     this.eventScheduler.reset(this.level);
+    this.startTalk(this.level - 1, this._talkPrevGrid, this._talkPrevSpeed);
 
     // 重置复活状态
     this.reviveUsed = false;
@@ -2020,6 +2139,7 @@ export default class TetrisGame {
    * 重新开始游戏
    */
   restart(savedLevel, savedHighScore) {
+    this._skipTalk = true;
     this.level = savedLevel || this.level;
     this.updateLevelConfig();
     this.eventScheduler.reset(this.level);
@@ -2028,6 +2148,8 @@ export default class TetrisGame {
     this.inkPhase = 'idle';
     this.bombPhase = 'idle';
     this.bombDebris = [];
+    this.talkPhase = 'idle';
+    this._skipTalk = false;
     this.currentBlock = null;
     this.nextBlock = null;
     this.gameOver = false;
