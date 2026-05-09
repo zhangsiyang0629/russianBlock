@@ -234,6 +234,13 @@ export default class TetrisGame {
       visible: false
     };
 
+    this.gameState = 'playing'; // playing | talking | clearing | panel
+    this.winRow = 0;
+    this.winTimer = 0;
+    this.winPanelScale = 0;
+    this.winPanelTimer = 0;
+    this.winAllCLeared = [];
+
     // 控制按钮状态（左移、加速、变换、右移）
     this.controlButtons = [
       { id: 'left', x: 0, y: 0, width: 0, height: 0, icon: '←', desc: '左移' },
@@ -245,7 +252,6 @@ export default class TetrisGame {
     // 动画实例
     this.failLaughAnim = new FailLaughAnimation();
 
-    this.talkPhase = 'idle';
     this.talkTimer = 0;
     this.talkFrame = 0;
     this.talkImages = [];
@@ -323,6 +329,10 @@ export default class TetrisGame {
     this.init();
   }
 
+  setState(newState) {
+    this.gameState = newState;
+  }
+
   init() {
     this.createNewBlock();
   }
@@ -365,7 +375,7 @@ export default class TetrisGame {
   }
 
   startTalk(prevLevel, prevGridSizeIdx, prevSpeedIdx) {
-    this.talkPhase = 'talking';
+    this.setState('talking');
     this.talkTimer = 0;
     this.talkFrame = 0;
     const config = this.gameMode === 'infinite' ? null : this.calculateLevelConfig(this.level);
@@ -1010,14 +1020,14 @@ export default class TetrisGame {
       for (const button of this.controlButtons) {
         if (x >= button.x && x <= button.x + button.width &&
           y >= button.y && y <= button.y + button.height) {
-            switch (button.id) {
-              case 'rotate':
-                this.rotateBlock();
-                break;
-            }
-            if (button.id !== 'down' && button.id !== 'left' && button.id !== 'right') {
-              this.touchKeys = {};
-            }
+          switch (button.id) {
+            case 'rotate':
+              this.rotateBlock();
+              break;
+          }
+          if (button.id !== 'down' && button.id !== 'left' && button.id !== 'right') {
+            this.touchKeys = {};
+          }
           return;
         }
       }
@@ -1147,24 +1157,34 @@ export default class TetrisGame {
     const { shape, x, y, color } = this.currentBlock;
     this.grid.placeShape(shape, x, y, color);
 
-    const eventId = this.eventScheduler.onBlockLanded();
-    if (eventId) {
-      const handler = getEventHandler(eventId);
-      if (handler) handler();
-    }
-
     const lines = this.grid.clearLines();
     if (lines > 0) {
       this.linesCleared += lines;
       const points = this.calculateScore(lines);
       this.score += points;
-      this.updateLevel();
-      if (this.gameMode === 'infinite') {
-        this.updateInfiniteSpeed();
+      if (this.gameMode !== 'infinite' && this.gameState === 'playing') {
+        const threshold = LEVEL_UP_SCORES[this.level] !== undefined ? LEVEL_UP_SCORES[this.level] : SCORE_CONFIG.levelUpThreshold;
+        if (this.score >= threshold) {
+          this.gameState = 'clearing';
+          this.winRow = this.findTopBlockRow();
+          // console.log(`关卡完成! score=${this.score}, lines=${this.linesCleared}, winRow=${this.winRow}`);
+          this.winTimer = 0;
+          this.eventScheduler.reset(this.level);
+        }
+      }
+      if (this.gameState === 'playing') {
+        this.gameMode === 'infinite' ? this.updateInfiniteSpeed() : this.updateLevel();
       }
     }
 
-    this.createNewBlock();
+    if (this.gameState === 'playing') {
+      const eventId = this.eventScheduler.onBlockLanded();
+      if (eventId) {
+        const handler = getEventHandler(eventId);
+        if (handler) handler();
+      }
+      this.createNewBlock();
+    }
   }
 
   /**
@@ -1187,6 +1207,14 @@ export default class TetrisGame {
       this.speedUpText.alpha = 0;
       this.speedUpText.scale = 0.8;
     }
+  }
+
+  findTopBlockRow() {
+    const d = this.grid.getGridData();
+    for (let r = 0; r < this.grid.rows; r++)
+      for (let c = 0; c < this.grid.cols; c++)
+        if (d[r][c]) return r;
+    return this.grid.rows;
   }
 
   /**
@@ -1241,6 +1269,10 @@ export default class TetrisGame {
     // 更新广告状态（无论游戏状态如何）
     this.adManager.update(this.lastTime);
 
+    // 更新网格动画状态（始终调用，确保clearAnimation能完成）
+    this.grid.updateAnimation();
+
+    // 泼墨效果
     if (this.inkPhase !== 'idle') {
       if ((this.gameOver || this.showVictoryPopup) && this.inkPhase !== 'exiting') {
         this.inkPhase = 'exiting';
@@ -1334,18 +1366,67 @@ export default class TetrisGame {
       }
     }
 
-    if (this.talkPhase !== 'idle') {
+    if (this.gameState === 'talking') {
       if (this.paused) return;
       this.talkTimer += deltaTime;
-      if (this.talkPhase === 'talking') {
+      if (this.talkTimer < 3000) {
         this.talkFrame = Math.floor(this.talkTimer / (3000 / Math.max(1, this.talkImages.length))) % Math.max(1, this.talkImages.length);
-        if (this.talkTimer >= 3000) {
-          this.talkPhase = 'fading';
-          this.talkTimer = 0;
-        }
-      } else if (this.talkPhase === 'fading') {
-        if (this.talkTimer >= 500) {
-          this.talkPhase = 'idle';
+      } else if (this.talkTimer < 3500) {
+        // fading phase
+      } else {
+        this.setState('playing');
+      }
+      return;
+    }
+
+    if (this.gameState === 'clearing') {
+      if (this.winRow > this.grid.rows || (this.winRow === this.findTopBlockRow() && this.winTimer === 0 && this.grid.clearAnimation.active)) {
+        // waiting for clearLines animation from lockBlock to finish
+        if (!this.grid.clearAnimation.active) { this.winTimer = 0; }
+        return;
+      }
+      if (!this.grid.clearAnimation.active && !this.paused) {
+        this.winTimer += deltaTime;
+        if (this.winTimer >= 300) {
+          const cleared = this.winAllCLeared.shift();
+          // console.log('clear animation done for row=', cleared, 'winTimer=', this.winTimer);
+          if (cleared) {
+            for (let c = 0; c < this.grid.cols; c++) {
+              this.grid.setCell(cleared, c, 0);
+            }
+          }
+
+          this.winTimer = 0;
+          const row = this.winRow;
+          if (row < this.grid.rows) {
+            let has = false;
+            for (let c = 0; c < this.grid.cols; c++) {
+              if (this.grid.getGridData()[row][c]) has = true;
+              // this.grid.setCell(row, c, 0);
+            }
+            console.log('startClearAnimation row=', row, 'has=', has);
+            if (has) this.grid.startClearAnimation([row]);
+            this.winRow = row + 1;
+            this.winAllCLeared.push(row)
+          }
+          if (row >= this.grid.rows) {
+            this.setState('panel');
+            this.winPanelTimer = 0;
+            this.winPanelScale = 0.2;
+            this.showVictoryPopup = true;
+            this.victoryMessage = ['LUCK', 'COOL', 'SO'][Math.floor(Math.random() * 3)];
+            this.victoryEffects.clear();
+            const oldGrid = this.gridSizeIndex;
+            const oldSpeed = this.speedIndex;
+            this.level = this.level + 1;
+            this.updateLevelConfig();
+            this.eventScheduler.reset(this.level);
+            this.resetGridForNewLevel();
+            this.score = 0;
+            this._talkPrevGrid = oldGrid;
+            this._talkPrevSpeed = oldSpeed;
+            saveOnLevelComplete(this.level, 0, this.highScore);
+          }
         }
       }
       return;
@@ -1391,9 +1472,6 @@ export default class TetrisGame {
     } else {
       this.smokeParticles = [];
     }
-
-    // 更新网格动画状态
-    this.grid.updateAnimation();
 
     // 方块自动下落
     this.dropCounter += deltaTime;
@@ -1470,10 +1548,10 @@ export default class TetrisGame {
     ctx.translate(offsetX, offsetY);
 
     // 渲染网格
-    this.grid.render(ctx);
+    this.grid.render(ctx, this.gameState);
 
     // 渲染当前方块
-    if (this.currentBlock) {
+    if (this.currentBlock && this.gameState !== 'clearing') {
       this.currentBlock.render(ctx, this.grid.cellSize);
     }
 
@@ -1587,8 +1665,8 @@ export default class TetrisGame {
     }
 
     // 渲染说话动画
-    if (this.talkPhase !== 'idle' && this.talkImages.length > 0) {
-      const alpha = this.talkPhase === 'fading' ? Math.max(0, 1 - this.talkTimer / 500) : 1;
+    if (this.gameState === 'talking' && this.talkImages.length > 0) {
+      const alpha = this.talkTimer >= 3000 ? Math.max(0, 1 - (this.talkTimer - 3000) / 500) : 1;
       ctx.globalAlpha = alpha;
 
       const cell = this.grid.cellSize;
@@ -1917,6 +1995,17 @@ export default class TetrisGame {
       const w = canvas.width;
       const h = canvas.height;
 
+      if (this.gameState === 'panel') {
+        this.winPanelTimer += 16;
+        if (this.winPanelTimer < 200) {
+          this.winPanelScale = 0.2 + 0.9 * (this.winPanelTimer / 200);
+        } else if (this.winPanelTimer < 600) {
+          this.winPanelScale = 1.1 - 0.1 * ((this.winPanelTimer - 200) / 400);
+        } else {
+          this.winPanelScale = 1;
+        }
+      }
+
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       ctx.fillRect(0, adHeight, w, h - adHeight);
 
@@ -1933,6 +2022,7 @@ export default class TetrisGame {
 
       ctx.save();
       ctx.translate(dx + dw / 2, dy + dh / 2);
+      ctx.scale(this.winPanelScale, this.winPanelScale);
       ctx.rotate(-1 * Math.PI / 180);
       ctx.translate(-(dx + dw / 2), -(dy + dh / 2));
       ctx.fillStyle = '#fffcf5';
@@ -1941,20 +2031,18 @@ export default class TetrisGame {
       drawRoundedRect(ctx, dx, dy, dw, dh, 18);
       ctx.fill();
       ctx.stroke();
-      ctx.restore();
 
       ctx.fillStyle = '#322f22';
       ctx.font = 'bold 24px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`LEVEL ${this.level}`, w / 2, dy + padding + titleH / 2);
+      ctx.fillText(`LEVEL ${this.level}`, dx + dw / 2, dy + padding + titleH / 2);
 
-      ctx.fillStyle = '#322f22';
-      ctx.fillRect(w / 2 - 25, dy + padding + titleH + 6, 50, 2);
+      ctx.fillRect(dx + dw / 2 - 25, dy + padding + titleH + 6, 50, 2);
 
       ctx.font = '20px Arial';
       ctx.fillStyle = '#5f5b4d';
-      ctx.fillText(this.victoryMessage, w / 2, dy + padding + titleH + 16 + msgH / 2);
+      ctx.fillText(this.victoryMessage, dx + dw / 2, dy + padding + titleH + 16 + msgH / 2);
 
       const btnX = dx + (dw - btnW) / 2;
       const nextBtnY = dy + padding + titleH + 16 + msgH + 20;
@@ -1984,6 +2072,7 @@ export default class TetrisGame {
 
       drawVictoryBtn(nextBtnY, 'NEXT', '#fdd1b4');
       drawVictoryBtn(quitBtnY, 'QUIT', '#ff8c94');
+      ctx.restore();
 
       this.victoryButton.x = btnX;
       this.victoryButton.y = nextBtnY;
@@ -2109,30 +2198,15 @@ export default class TetrisGame {
    * 进入下一关（网格已在updateLevel中重置，此处只需隐藏弹窗并继续游戏）
    */
   resetForNextLevel() {
-    console.log(`进入下一关: 关卡 ${this.level}, 格子=${GRID_SIZES[this.gridSizeIndex].cols}x${GRID_SIZES[this.gridSizeIndex].rows}, 初始层数=${this.initialLayers}`);
-
-    // 隐藏胜利弹窗
     this.showVictoryPopup = false;
     this.victoryButton.visible = false;
     this.victoryQuitButton.visible = false;
     this.victoryEffects.clear();
-
-    // 分数清零，新关卡从0开始
-    this.score = 0;
-    this.eventScheduler.reset(this.level);
-    this.startTalk(this.level - 1, this._talkPrevGrid, this._talkPrevSpeed);
-
-    // 重置复活状态
+    this.gameState = 'playing';
+    this.winAllCLeared = [];
     this.reviveUsed = false;
-
-    // 注意：广告管理器不会被重置，广告会继续显示
-
-    // 停止死亡动画
     this.failLaughAnim.stop();
-
-    // 网格已在updateLevel的resetGridForNewLevel中重置
-    // 当前方块和下一个方块已在resetGridForNewLevel中重置
-    // 游戏状态已更新，直接继续游戏即可
+    this.startTalk(this.level - 1, this._talkPrevGrid, this._talkPrevSpeed);
   }
 
   /**
@@ -2148,7 +2222,7 @@ export default class TetrisGame {
     this.inkPhase = 'idle';
     this.bombPhase = 'idle';
     this.bombDebris = [];
-    this.talkPhase = 'idle';
+    this.gameState = 'playing';
     this._skipTalk = false;
     this.currentBlock = null;
     this.nextBlock = null;
@@ -2160,6 +2234,7 @@ export default class TetrisGame {
     this.dropInterval = 1000;
     this.dropCounter = 0;
     this.keys = {};
+    this.winAllCLeared = [];
 
     this.reviveUsed = false;
     this.showVictoryPopup = false;
