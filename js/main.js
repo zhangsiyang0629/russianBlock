@@ -460,9 +460,10 @@ export default class Main {
       this.handleTouch(this._lastTapX, this._lastTapY);
     }
     if (this.currentState === 'game' && this.game) {
+      const g = this.game;
       this.handleTouch(x, y);
-      if (this.game.handleTouchRelease) {
-        this.game.handleTouchRelease(x, y);
+      if (g.handleTouchRelease) {
+        g.handleTouchRelease(x, y);
       }
     }
   }

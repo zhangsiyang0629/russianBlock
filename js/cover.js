@@ -373,9 +373,6 @@ export default class Cover {
           this.bgm.pause();
         }
       }
-      if (this.musicManager) {
-        this.musicManager.setOn(this.settings.musicOn);
-      }
       this.saveSettings();
       return null;
     }
@@ -386,9 +383,6 @@ export default class Cover {
       this.settings.musicVolume = vol;
       if (this.bgm) {
         this.bgm.volume = vol;
-      }
-      if (this.musicManager) {
-        this.musicManager.setVolume(vol);
       }
       this.saveSettings();
       return null;

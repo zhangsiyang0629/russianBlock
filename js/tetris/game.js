@@ -1612,11 +1612,13 @@ export default class TetrisGame {
       ctx.fill();
       ctx.fillStyle = color;
       const fillW = sw * val;
-      if (fillW > barH) drawRoundedRect(ctx, sx, sy + 9 - barH / 2, fillW, barH, barH / 2);
-      ctx.fill();
-      ctx.fillStyle = color;
+      if (fillW > barH) {
+        drawRoundedRect(ctx, sx, sy + 9 - barH / 2, fillW, barH, barH / 2);
+        ctx.fill();
+      }
       ctx.beginPath();
       ctx.arc(sx + sw * val, sy + 9, thumbR, 0, Math.PI * 2);
+      ctx.fillStyle = color;
       ctx.fill();
       ctx.strokeStyle = '#322f22';
       ctx.lineWidth = 1.5;

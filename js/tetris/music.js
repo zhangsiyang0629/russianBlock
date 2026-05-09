@@ -93,7 +93,6 @@ export default class MusicManager {
       this.audioContext.destroy();
       this.audioContext = null;
     }
-    this.currentMusicNumber = -1;
   }
 
   setVolume(vol) {
@@ -105,10 +104,40 @@ export default class MusicManager {
 
   setOn(on) {
     this.musicOn = on;
-    if (on) {
-      this.playRandom();
-    } else {
+    if (!on) {
       this.stop();
+    } else if (this.currentMusicNumber > 0) {
+      this.playByNumber(this.currentMusicNumber);
+    } else {
+      this.playRandom();
+    }
+  }
+
+  async playByNumber(number) {
+    this.stop();
+    this.currentMusicNumber = number;
+    let url = null;
+    if (typeof wx !== 'undefined' && wx.cloud && initCloud()) {
+      try {
+        const res = await wx.cloud.getTempFileURL({
+          fileList: [`${this.CLOUD_PREFIX}${number}.mp3`]
+        });
+        if (res.fileList && res.fileList[0] && res.fileList[0].tempFileURL) url = res.fileList[0].tempFileURL;
+      } catch (e) {}
+    }
+    if (!url && typeof wx !== 'undefined' && wx.cloud && initCloud()) {
+      try {
+        const res = await wx.cloud.callFunction({
+          name: 'getCosUrl',
+          data: { bucket: 'music-1333103280', fileKey: `music_${number}.mp3` }
+        });
+        if (res.result && res.result.url) url = res.result.url;
+      } catch (e) {}
+    }
+    if (url) {
+      this.playWithUrl(url);
+    } else {
+      this.playRandom();
     }
   }
 }
