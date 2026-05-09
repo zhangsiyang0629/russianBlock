@@ -100,7 +100,19 @@ const LEVEL_CONFIG = {
 // 分数配置（便于调试与调整）
 const SCORE_CONFIG = {
   lineClearPoints: [0, 10, 25, 50, 80],
-  levelUpThreshold: 30,
+  levelUpThreshold: 150,
+};
+
+// 关卡通关分数配置，未配置的关卡默认 levelUpThreshold
+const LEVEL_UP_SCORES = {
+  1: 100,
+  2: 100,
+  3: 100,
+  4: 100,
+  5: 100,
+  6: 100,
+  7: 100,
+  8: 90,
 };
 
 // 无尽模式速度配置
@@ -336,6 +348,7 @@ export default class TetrisGame {
       if (hasBlock) maxRow = r;
     }
     const layers = maxRow + 1;
+    console.log("layers:", layers);
     if (layers < 2) return;
 
     const positions = [];
@@ -1146,8 +1159,8 @@ export default class TetrisGame {
    * 更新游戏等级（基于累计得分）
    */
   updateLevel() {
-    // 检查是否进入新关卡
-    if (this.score >= SCORE_CONFIG.levelUpThreshold) {
+    const threshold = LEVEL_UP_SCORES[this.level] !== undefined ? LEVEL_UP_SCORES[this.level] : SCORE_CONFIG.levelUpThreshold;
+    if (this.score >= threshold) {
       const oldLevel = this.level;
       this.level = this.level + 1;
 
