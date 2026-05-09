@@ -100,7 +100,7 @@ const LEVEL_CONFIG = {
 // 分数配置（便于调试与调整）
 const SCORE_CONFIG = {
   lineClearPoints: [0, 10, 25, 50, 80],
-  levelUpThreshold: 200,
+  levelUpThreshold: 30,
 };
 
 // 无尽模式速度配置
@@ -2096,6 +2096,7 @@ export default class TetrisGame {
 
     // 分数清零，新关卡从0开始
     this.score = 0;
+    this.eventScheduler.reset(this.level);
 
     // 重置复活状态
     this.reviveUsed = false;
