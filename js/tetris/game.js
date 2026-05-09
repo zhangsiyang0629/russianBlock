@@ -201,6 +201,7 @@ export default class TetrisGame {
 
     // 输入状态
     this.keys = {};
+    this.touchKeys = {};
 
     // 暂停按钮
     this.pauseButton = { x: 0, y: 0, width: 0, height: 0 };
@@ -859,11 +860,25 @@ export default class TetrisGame {
     ctx.restore();
   }
 
+  handleTouchPress(x, y) {
+    if (y >= this.ctx.canvas.height - this.bottomHeight) {
+      for (const btn of this.controlButtons) {
+        if (x >= btn.x && x <= btn.x + btn.width && y >= btn.y && y <= btn.y + btn.height) {
+          this.touchKeys[btn.id] = true;
+          return;
+        }
+      }
+    }
+  }
+
+  handleTouchRelease() {
+    this.touchKeys = {};
+  }
+
   /**
    * 设置输入监听
    */
   setupInput() {
-    // 键盘输入
     wx.onKeyDown((res) => {
       this.keys[res.keyCode] = true;
     });
@@ -995,20 +1010,14 @@ export default class TetrisGame {
       for (const button of this.controlButtons) {
         if (x >= button.x && x <= button.x + button.width &&
           y >= button.y && y <= button.y + button.height) {
-          switch (button.id) {
-            case 'left':
-              this.moveBlock(-1, 0);
-              break;
-            case 'down':
-              this.moveBlock(0, 1);
-              break;
-            case 'rotate':
-              this.rotateBlock();
-              break;
-            case 'right':
-              this.moveBlock(1, 0);
-              break;
-          }
+            switch (button.id) {
+              case 'rotate':
+                this.rotateBlock();
+                break;
+            }
+            if (button.id !== 'down' && button.id !== 'left' && button.id !== 'right') {
+              this.touchKeys = {};
+            }
           return;
         }
       }
@@ -1020,7 +1029,25 @@ export default class TetrisGame {
    * 处理键盘输入
    */
   handleInput() {
-    // 左箭头：37，右箭头：39，下箭头：40，上箭头：38（旋转），空格：32（硬降）
+    if (this.touchKeys['left']) {
+      if (!this._moveTimer || Date.now() - this._moveTimer > 100) {
+        this.moveBlock(-1, 0);
+        this._moveTimer = Date.now();
+      }
+    }
+    if (this.touchKeys['right']) {
+      if (!this._moveTimer || Date.now() - this._moveTimer > 100) {
+        this.moveBlock(1, 0);
+        this._moveTimer = Date.now();
+      }
+    }
+    if (this.touchKeys['down']) {
+      if (!this._downTimer || Date.now() - this._downTimer > 100) {
+        this.moveBlock(0, 1);
+        this._downTimer = Date.now();
+      }
+    }
+
     if (this.keys[37]) { // 左
       this.moveBlock(-1, 0);
       this.keys[37] = false; // 防止连续触发

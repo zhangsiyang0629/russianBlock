@@ -432,14 +432,16 @@ export default class Main {
     if (this.currentState === 'rank' && this.rankPanel) {
       this.rankPanel.handleTouchStart(x, y);
     }
-    // 保持原有点击处理
     if (this.currentState === 'cover' && this.cover) {
       this._lastTapX = x;
       this._lastTapY = y;
       this._isTap = true;
     }
+    if (this.currentState === 'game' && this.game && this.game.handleTouchPress) {
+      this.game.handleTouchPress(x, y);
+    }
   }
-  
+
   handleTouchMove(x, y) {
     if (this.currentState === 'rank' && this.rankPanel) {
       this.rankPanel.handleTouchMove(x, y);
@@ -448,19 +450,20 @@ export default class Main {
       this._isTap = false;
     }
   }
-  
+
   handleTouchEnd(x, y) {
     if (this.currentState === 'rank' && this.rankPanel) {
       this.rankPanel.handleTouchEnd(x, y);
       return;
     }
-    // 处理封面点击（仅当是点击操作而非滑动）
     if (this.currentState === 'cover' && this.cover && this._isTap) {
       this.handleTouch(this._lastTapX, this._lastTapY);
     }
-    // 处理游戏触摸
     if (this.currentState === 'game' && this.game) {
       this.handleTouch(x, y);
+      if (this.game.handleTouchRelease) {
+        this.game.handleTouchRelease(x, y);
+      }
     }
   }
 
