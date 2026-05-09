@@ -630,7 +630,12 @@ export default class TetrisGame {
     ctx.fillStyle = COLORS.primary;
     ctx.font = 'bold 16px Arial';
     ctx.textBaseline = 'middle';
-    ctx.fillText(this.score.toString(), scoreCardWidth / 2, scoreCardHeight / 2 + 3);
+    if (this.gameMode === 'infinite') {
+      ctx.fillText(this.score.toString(), scoreCardWidth / 2, scoreCardHeight / 2 + 3);
+    } else {
+      const thr = LEVEL_UP_SCORES[this.level] !== undefined ? LEVEL_UP_SCORES[this.level] : SCORE_CONFIG.levelUpThreshold;
+      ctx.fillText(`${this.score}/${thr}`, scoreCardWidth / 2, scoreCardHeight / 2 + 3);
+    }
 
     // 关卡显示
     ctx.fillStyle = COLORS.onSurfaceVariant;
@@ -675,7 +680,9 @@ export default class TetrisGame {
     ctx.font = '10px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(`BEST ${this.highScore}`, scoreCardX + scoreCardWidth / 2, scoreCardY + scoreCardHeight + 5);
+    if (this.gameMode === 'infinite') {
+      ctx.fillText(`BEST ${this.highScore}`, scoreCardX + scoreCardWidth / 2, scoreCardY + scoreCardHeight + 5);
+    }
     ctx.restore();
 
     // 设置按钮（分数区域下方，与暂停按钮样式一致）
