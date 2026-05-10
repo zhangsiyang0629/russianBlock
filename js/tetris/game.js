@@ -239,7 +239,6 @@ export default class TetrisGame {
     this.winTimer = 0;
     this.winPanelScale = 0;
     this.winPanelTimer = 0;
-    this.winAllCLeared = [];
 
     // 控制按钮状态（左移、加速、变换、右移）
     this.controlButtons = [
@@ -1388,26 +1387,18 @@ export default class TetrisGame {
       if (!this.grid.clearAnimation.active && !this.paused) {
         this.winTimer += deltaTime;
         if (this.winTimer >= 300) {
-          const cleared = this.winAllCLeared.shift();
-          // console.log('clear animation done for row=', cleared, 'winTimer=', this.winTimer);
-          if (cleared) {
-            for (let c = 0; c < this.grid.cols; c++) {
-              this.grid.setCell(cleared, c, 0);
-            }
-          }
-
           this.winTimer = 0;
           const row = this.winRow;
           if (row < this.grid.rows) {
             let has = false;
             for (let c = 0; c < this.grid.cols; c++) {
               if (this.grid.getGridData()[row][c]) has = true;
-              // this.grid.setCell(row, c, 0);
             }
-            console.log('startClearAnimation row=', row, 'has=', has);
             if (has) this.grid.startClearAnimation([row]);
+            for (let c = 0; c < this.grid.cols; c++) {
+              this.grid.setCell(row, c, 0);
+            }
             this.winRow = row + 1;
-            this.winAllCLeared.push(row)
           }
           if (row >= this.grid.rows) {
             this.setState('panel');
@@ -2203,7 +2194,6 @@ export default class TetrisGame {
     this.victoryQuitButton.visible = false;
     this.victoryEffects.clear();
     this.gameState = 'playing';
-    this.winAllCLeared = [];
     this.reviveUsed = false;
     this.failLaughAnim.stop();
     this.startTalk(this.level - 1, this._talkPrevGrid, this._talkPrevSpeed);
@@ -2234,7 +2224,6 @@ export default class TetrisGame {
     this.dropInterval = 1000;
     this.dropCounter = 0;
     this.keys = {};
-    this.winAllCLeared = [];
 
     this.reviveUsed = false;
     this.showVictoryPopup = false;
