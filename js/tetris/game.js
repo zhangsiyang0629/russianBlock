@@ -234,11 +234,21 @@ export default class TetrisGame {
       visible: false
     };
 
-    this.gameState = 'playing'; // playing | talking | clearing | panel
+    this.gameState = 'playing';
     this.winRow = 0;
     this.winTimer = 0;
     this.winPanelScale = 0;
     this.winPanelTimer = 0;
+
+    this.scoreFloats = [];
+    this.scoreStars = [];
+    this.starImage = null;
+    this.scoreRoll = { active: false, from: 0, to: 0, timer: 0 };
+    if (typeof wx !== 'undefined' && wx.createImage) {
+      const s = wx.createImage();
+      s.onload = () => { this.starImage = s; };
+      s.src = 'subpackages/images/star.png';
+    }
 
     // 控制按钮状态（左移、加速、变换、右移）
     this.controlButtons = [
@@ -692,7 +702,8 @@ export default class TetrisGame {
     ctx.font = 'bold 16px Arial';
     ctx.textBaseline = 'middle';
     if (this.gameMode === 'infinite') {
-      ctx.fillText(this.score.toString(), scoreCardWidth / 2, scoreCardHeight / 2 + 3);
+      const scoreDisplay = this.scoreRoll.active ? Math.round(this.scoreRoll.from + (this.scoreRoll.to - this.scoreRoll.from) * Math.min(1, this.scoreRoll.timer / 400)) : this.score;
+      ctx.fillText(scoreDisplay.toString(), scoreCardWidth / 2, scoreCardHeight / 2 + 3);
     } else {
       const thr = LEVEL_UP_SCORES[this.level] !== undefined ? LEVEL_UP_SCORES[this.level] : SCORE_CONFIG.levelUpThreshold;
       ctx.fillText(`${this.score}/${thr}`, scoreCardWidth / 2, scoreCardHeight / 2 + 3);
@@ -743,6 +754,7 @@ export default class TetrisGame {
     ctx.textBaseline = 'top';
     if (this.gameMode === 'infinite') {
       ctx.fillText(`BEST ${this.highScore}`, scoreCardX + scoreCardWidth / 2, scoreCardY + scoreCardHeight + 5);
+      this._scoreCenter = { x: scoreCardX + scoreCardWidth / 2, y: scoreCardY + scoreCardHeight / 2 };
     }
     ctx.restore();
 
@@ -1160,7 +1172,23 @@ export default class TetrisGame {
     if (lines > 0) {
       this.linesCleared += lines;
       const points = this.calculateScore(lines);
+      const oldScore = this.score;
       this.score += points;
+
+      const floatColors = ['#999999', '#33CC33', '#3399FF', '#9933FF'];
+      const floatSizes = [24, 26, 30, 38];
+      const clearedRows = this.grid._lastClearedRows || [];
+      const avgRow = clearedRows.length > 0 ? clearedRows.reduce((a, b) => a + b, 0) / clearedRows.length : this.grid.rows * 0.5;
+      this.scoreFloats.push({
+        text: `+${points}`,
+        x: (this._gridOffX || 0) + this.grid.cols * this.grid.cellSize / 2,
+        y: (this._gridOffY || 0) + avgRow * this.grid.cellSize,
+        color: floatColors[Math.min(lines, 4) - 1],
+        size: floatSizes[Math.min(lines, 4) - 1],
+        life: 1,
+      });
+      this._lastFloatOldScore = oldScore;
+      this._lastFloatPoints = points;
       if (this.gameMode !== 'infinite' && this.gameState === 'playing') {
         const threshold = LEVEL_UP_SCORES[this.level] !== undefined ? LEVEL_UP_SCORES[this.level] : SCORE_CONFIG.levelUpThreshold;
         if (this.score >= threshold) {
@@ -1350,6 +1378,52 @@ export default class TetrisGame {
       if (d.life <= 0) this.bombDebris.splice(i, 1);
     }
 
+    for (let i = this.scoreFloats.length - 1; i >= 0; i--) {
+      const f = this.scoreFloats[i];
+      f.y -= 50 * deltaTime / 1000;
+      f.life -= deltaTime / 1000;
+      if (f.life <= 0.35 && !f._starSpawned) {
+        f._starSpawned = true;
+        for (let j = 0; j < 6; j++) {
+          this.scoreStars.push({
+            x: f.x + (Math.random() - 0.5) * 40,
+            y: f.y + (Math.random() - 0.5) * 40,
+            phase: 'twinkle', timer: 0,
+            delay: j * 80,
+          });
+        }
+      }
+      if (f.life <= 0) this.scoreFloats.splice(i, 1);
+    }
+
+    let anyStarArrived = false;
+    for (let i = this.scoreStars.length - 1; i >= 0; i--) {
+      const s = this.scoreStars[i];
+      if (s.delay > 0) { s.delay -= deltaTime; continue; }
+      s.timer += deltaTime;
+      if (s.phase === 'twinkle' && s.timer >= 500) { s.phase = 'fly'; s.timer = 0; }
+      if (s.phase === 'fly') {
+        const t = this._scoreCenter || { x: 15, y: 60 };
+        s.x += (t.x - s.x) * 0.05;
+        s.y += (t.y - s.y) * 0.05;
+        if (s.timer >= 650) {
+          this.scoreStars.splice(i, 1);
+          anyStarArrived = true;
+        }
+      }
+    }
+    if (anyStarArrived && this.scoreStars.length === 0) {
+      this.scoreRoll.active = true;
+      this.scoreRoll.from = this._lastFloatOldScore || 0;
+      this.scoreRoll.to = this.score;
+      this.scoreRoll.timer = 0;
+    }
+
+    if (this.scoreRoll.active) {
+      this.scoreRoll.timer += deltaTime;
+      if (this.scoreRoll.timer >= 400) { this.scoreRoll.active = false; }
+    }
+
     if (this.speedUpText.active) {
       this.speedUpText.timer += deltaTime;
       if (this.speedUpText.timer < 300) {
@@ -1500,9 +1574,9 @@ export default class TetrisGame {
 
     const offsetX = (canvas.width - gridWidth) / 2;
     let offsetY;
+    this._gridOffX = offsetX;
 
     if (gridHeight <= availableSpace) {
-      // 网格可以完全放入可用空间，垂直居中
       offsetY = topBoundary + (availableSpace - gridHeight) / 2;
     } else {
       // 网格太大，无法完全放入可用空间
@@ -1534,7 +1608,8 @@ export default class TetrisGame {
       console.warn(`强制调整网格位置以避免与按钮区域重叠`);
     }
 
-    // 保存画布状态
+    this._gridOffY = offsetY;
+
     ctx.save();
     ctx.translate(offsetX, offsetY);
 
@@ -1697,6 +1772,33 @@ export default class TetrisGame {
       ctx.fillText(this.talkText, bx + bw / 2, by + bh / 2);
 
       ctx.globalAlpha = 1;
+    }
+
+    for (const f of this.scoreFloats) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, f.life);
+      ctx.font = `bold ${f.size}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#322f22';
+      ctx.lineWidth = 3;
+      ctx.strokeText(f.text, f.x, f.y);
+      ctx.fillStyle = f.color;
+      ctx.fillText(f.text, f.x, f.y);
+      ctx.restore();
+    }
+
+    for (const s of this.scoreStars) {
+      if (this.starImage) {
+        ctx.save();
+        const twinkle = 0.6 + 0.4 * Math.abs(Math.sin(s.timer * 0.008 * Math.PI));
+        const sc = s.phase === 'twinkle' ? twinkle : 1;
+        ctx.globalAlpha = s.phase === 'twinkle' ? twinkle : Math.max(0, 1 - s.timer / 600);
+        const ss = 24 * sc;
+        ctx.drawImage(this.starImage, 0, 0, this.starImage.width, this.starImage.height,
+          s.x - ss / 2, s.y - ss / 2, ss, ss);
+        ctx.restore();
+      }
     }
 
     // 渲染死亡动画
@@ -2193,6 +2295,9 @@ export default class TetrisGame {
     this.victoryButton.visible = false;
     this.victoryQuitButton.visible = false;
     this.victoryEffects.clear();
+    this.scoreFloats = [];
+    this.scoreStars = [];
+    this.scoreRoll.active = false;
     this.gameState = 'playing';
     this.reviveUsed = false;
     this.failLaughAnim.stop();

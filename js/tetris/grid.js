@@ -133,8 +133,8 @@ export default class Grid {
     if (clearedRows.length > 0) {
       this.startClearAnimation(clearedRows);
     }
+    this._lastClearedRows = [...clearedRows];
 
-    // 实际清除行（保持原有逻辑）
     for (let y = this.rows - 1; y >= 0; y--) {
       if (this.grid[y].every(cell => cell !== 0)) {
         this.grid.splice(y, 1);
