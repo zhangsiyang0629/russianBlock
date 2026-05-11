@@ -7,10 +7,15 @@ export default class MusicManager {
     this.musicOn = true;
     this.musicVolume = 0.5;
     this.musicCount = musicCount;
+    this.mode = 'level';
 
     this.CLOUD_PREFIX = 'cloud://cloudbase-d5gyz0rzwf3c9a078.636c-cloudbase-d5gyz0rzwf3c9a078-1424022365/music/music_';
 
     this.loadSettings();
+  }
+
+  setMode(mode) {
+    this.mode = mode;
   }
 
   loadSettings() {
@@ -74,9 +79,15 @@ export default class MusicManager {
     if (typeof wx === 'undefined' || !wx.createInnerAudioContext) return;
 
     this.audioContext = wx.createInnerAudioContext();
-    this.audioContext.loop = true;
     this.audioContext.volume = this.musicVolume;
     this.audioContext.obeyMuteSwitch = false;
+
+    if (this.mode === 'infinite') {
+      this.audioContext.loop = false;
+      this.audioContext.onEnded(() => { this.playRandom();});
+    } else {
+      this.audioContext.loop = true;
+    }
 
     this.audioContext.src = url;
     this.audioContext.play();

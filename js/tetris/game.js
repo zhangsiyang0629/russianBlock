@@ -145,6 +145,9 @@ export default class TetrisGame {
 
     this.musicManager = musicManager;
     this.gameMode = gameMode;
+    if (this.musicManager) {
+      this.musicManager.setMode(gameMode);
+    }
 
     // 广告管理器
     this.adManager = new AdManager();
@@ -1266,6 +1269,11 @@ export default class TetrisGame {
       // 重置网格以适应新关卡
       this.resetGridForNewLevel();
 
+      // 切换新音乐（新关卡播放新音乐）
+      if (this.musicManager) {
+        this.musicManager.playRandom();
+      }
+
       // 触发胜利弹窗（仅当关卡变化时）
       this.showVictoryPopup = true;
       // 随机选择弹窗文案
@@ -1490,6 +1498,9 @@ export default class TetrisGame {
             this.updateLevelConfig();
             this.eventScheduler.reset(this.level);
             this.resetGridForNewLevel();
+            if (this.musicManager) {
+              this.musicManager.playRandom();
+            }
             this.score = 0;
             this._talkPrevGrid = oldGrid;
             this._talkPrevSpeed = oldSpeed;
