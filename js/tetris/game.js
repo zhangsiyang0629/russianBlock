@@ -217,6 +217,8 @@ export default class TetrisGame {
 
     // 复活状态
     this.reviveUsed = false; // 是否已使用过复活
+    this._adLoading = false;
+    this._adError = '';
 
     // 胜利弹窗状态
     this.showVictoryPopup = false;
@@ -1019,12 +1021,14 @@ export default class TetrisGame {
           if (btn.id === 'revive') {
             this.reviveByAd();
           } else if (btn.id === 'restart') {
+            this._adError = '';
             if (this.onRestart) {
               this.onRestart();
             } else {
               this.restart();
             }
           } else if (btn.id === 'quit') {
+            this._adError = '';
             if (this.onQuit) this.onQuit();
           }
           return;
@@ -2265,9 +2269,24 @@ export default class TetrisGame {
       ctx.fillStyle = '#5f5b4d';
       ctx.fillText(`Score: ${this.score}    Best: ${this.highScore}`, w / 2, dy + padding + titleH + 14 + textBlockH / 2);
 
-      const gameOverBtns = this.reviveUsed
+      if (this._adLoading) {
+        ctx.fillStyle = COLORS.primary;
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const dots = '.'.repeat(Math.floor(Date.now() / 400) % 4);
+        ctx.fillText(`WATCHING AD${dots}`, w / 2, dy + padding + titleH + 14 + textBlockH + 10 + btnH / 2);
+      } else if (this._adError) {
+        ctx.fillStyle = COLORS.error;
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this._adError, w / 2, dy + padding + titleH + 14 + textBlockH + 10 + btnH / 2);
+      }
+
+      const gameOverBtns = this._adLoading ? [] : (this.reviveUsed
         ? [{ id: 'restart', text: 'RESTART' }, { id: 'quit', text: 'QUIT' }]
-        : [{ id: 'revive', text: '▶ AD' }, { id: 'restart', text: 'RESTART' }, { id: 'quit', text: 'QUIT' }];
+        : [{ id: 'revive', text: '▶ AD' }, { id: 'restart', text: 'RESTART' }, { id: 'quit', text: 'QUIT' }]);
 
       for (let i = 0; i < gameOverBtns.length; i++) {
         const btn = gameOverBtns[i];
@@ -2416,67 +2435,30 @@ export default class TetrisGame {
    */
   reviveByAd() {
     console.log('尝试通过广告复活...');
+    this._adLoading = true;
+    this._adError = '';
 
-    // 显示激励视频广告
     this.adManager.showRewardedAd(
-      // 广告观看成功回调
       () => {
         console.log('广告观看成功，执行复活逻辑');
+        this._adLoading = false;
 
-        // 清除底部4行方块（提供更多空间）
-        const blocksCleared = this.grid.clearBottomRows(4);
-        console.log(`清除了 ${blocksCleared} 个方块`);
-
-        // 重置游戏状态
-        this.gameOver = false;
+        const savedScore = this.score;
+        const savedHighScore = this.highScore;
+        this.restart(this.level, savedHighScore);
         this.reviveUsed = true;
 
-        // 重新创建当前方块（使用现有的下一个方块）
-        this.currentBlock = this.nextBlock;
-        if (this.currentBlock) {
-          this.currentBlock.setPosition(Math.floor(this.grid.cols / 2) - 2, 0);
+        if (this.gameMode === 'infinite') {
+          this.score = savedScore;
+          this.highScore = Math.max(savedHighScore, savedScore);
         }
 
-        // 生成新的下一个方块
-        this.nextBlock = new Tetromino(Tetromino.randomType());
-
-        // 检查新方块是否可以放置
-        if (this.currentBlock && !this.grid.isValidShapePosition(
-          this.currentBlock.getShape(),
-          this.currentBlock.x,
-          this.currentBlock.y
-        )) {
-          // 如果仍然无法放置，尝试清除更多行（最多再清除3行）
-          for (let i = 0; i < 3; i++) {
-            this.grid.clearBottomRows(1);
-            if (this.grid.isValidShapePosition(
-              this.currentBlock.getShape(),
-              this.currentBlock.x,
-              this.currentBlock.y
-            )) {
-              break;
-            }
-          }
-        }
-
-        // 如果最终仍然无法放置，则游戏结束
-        if (this.currentBlock && !this.grid.isValidShapePosition(
-          this.currentBlock.getShape(),
-          this.currentBlock.x,
-          this.currentBlock.y
-        )) {
-          console.log('复活失败，网格已满');
-          this.gameOver = true;
-        } else {
-          console.log('复活成功，游戏继续');
-          // 停止死亡动画
-          this.failLaughAnim.stop();
-        }
+        this.failLaughAnim.stop();
       },
-      // 广告观看失败回调
       (error) => {
         console.log('广告观看失败，无法复活:', error);
-        // 可以在这里给用户提示
+        this._adLoading = false;
+        this._adError = 'AD LOAD FAILED';
       }
     );
   }
