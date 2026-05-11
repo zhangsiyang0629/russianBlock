@@ -1286,6 +1286,7 @@ export default class TetrisGame {
       }
 
       // 触发胜利弹窗（仅当关卡变化时）
+      this.playSfx('audio/victor.mp3');
       this.showVictoryPopup = true;
       // 随机选择弹窗文案
       const messages = ['LUCK', 'COOL', 'SO'];
@@ -1503,6 +1504,7 @@ export default class TetrisGame {
             this.setState('panel');
             this.winPanelTimer = 0;
             this.winPanelScale = 0.2;
+            this.playSfx('audio/victor.mp3');
             this.showVictoryPopup = true;
             this.victoryMessage = ['LUCK', 'COOL', 'SO'][Math.floor(Math.random() * 3)];
             this.victoryEffects.clear();
