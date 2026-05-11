@@ -636,6 +636,7 @@ export default class TetrisGame {
       this.currentBlock.y
     )) {
       this.gameOver = true;
+      this.playSfx('audio/fail.mp3');
       console.log('Game Over!');
       if (this.musicManager) {
         this.musicManager.stop();
