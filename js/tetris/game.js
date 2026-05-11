@@ -447,6 +447,7 @@ export default class TetrisGame {
     this.bombGridX = pos.x;
     this.bombGridY = pos.y;
     this.bombPhase = 'fall';
+    this.playSfx('audio/bomb.mp3');
     this.bombTimer = 0;
     this.bombFallY = 0;
     this.bombFuseFrame = 0;
@@ -1368,6 +1369,7 @@ export default class TetrisGame {
         this.bombFuseFrame = Math.floor(this.bombTimer / (fuseMs / total));
         if (this.bombTimer >= fuseMs) {
           this.bombPhase = 'expand';
+          this.playSfx('audio/boom.mp3');
           this.bombTimer = 0;
         }
       } else if (this.bombPhase === 'expand') {
