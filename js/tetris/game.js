@@ -1794,7 +1794,7 @@ export default class TetrisGame {
         const twinkle = 0.6 + 0.4 * Math.abs(Math.sin(s.timer * 0.008 * Math.PI));
         const sc = s.phase === 'twinkle' ? twinkle : 1;
         ctx.globalAlpha = s.phase === 'twinkle' ? twinkle : Math.max(0, 1 - s.timer / 600);
-        const ss = 24 * sc;
+        const ss = 48 * sc;
         ctx.drawImage(this.starImage, 0, 0, this.starImage.width, this.starImage.height,
           s.x - ss / 2, s.y - ss / 2, ss, ss);
         ctx.restore();
