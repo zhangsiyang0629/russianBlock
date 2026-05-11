@@ -404,26 +404,36 @@ export default class Main {
   bindEvents() {
     // 触摸事件
     wx.onTouchStart((e) => {
+      if (!e || !e.touches || !e.touches[0]) return;
       const touch = e.touches[0];
       this.handleTouchStart(touch.clientX, touch.clientY);
     });
     
     wx.onTouchMove((e) => {
+      if (!e || !e.touches || !e.touches[0]) return;
       const touch = e.touches[0];
       this.handleTouchMove(touch.clientX, touch.clientY);
     });
     
     wx.onTouchEnd((e) => {
+      if (!e || !e.changedTouches || !e.changedTouches[0]) return;
       const touch = e.changedTouches[0];
       this.handleTouchEnd(touch.clientX, touch.clientY);
     });
     
-    // 键盘事件（用于重新开始）
+    // 键盘事件（游戏控制 + 功能键）
     wx.onKeyDown((res) => {
-      if (res.keyCode === 82) { // R键
-        if (this.currentState === 'game' && this.game) {
+      if (this.currentState === 'game' && this.game) {
+        this.game.keys[res.keyCode] = true;
+        if (res.keyCode === 82) { // R键
           this.game.restart();
         }
+      }
+    });
+
+    wx.onKeyUp((res) => {
+      if (this.currentState === 'game' && this.game) {
+        this.game.keys[res.keyCode] = false;
       }
     });
   }
@@ -436,9 +446,29 @@ export default class Main {
       this._lastTapX = x;
       this._lastTapY = y;
       this._isTap = true;
+      // 安卓部分版本 touchEnd 可能不触发，在 touchStart 处理点击
+      this.handleCoverTap(x, y);
     }
     if (this.currentState === 'game' && this.game && this.game.handleTouchPress) {
       this.game.handleTouchPress(x, y);
+    }
+  }
+
+  handleCoverTap(x, y) {
+    if (this.currentState !== 'cover' || !this.cover) return;
+    const clickedId = this.cover.handleClick(x, y);
+    if (clickedId === 'play') {
+      this.startGame();
+    } else if (clickedId === 'infinite') {
+      this.startInfiniteGame();
+    } else if (clickedId === 'scoresNav') {
+      this.handleRankEntry('score');
+    } else if (clickedId === 'levelsNav') {
+      this.handleRankEntry('level');
+    } else if (clickedId === 'settingsNav') {
+      if (this.cover) {
+        this.cover.showSettings();
+      }
     }
   }
 
@@ -457,7 +487,8 @@ export default class Main {
       return;
     }
     if (this.currentState === 'cover' && this.cover && this._isTap) {
-      this.handleTouch(this._lastTapX, this._lastTapY);
+      this.handleCoverTap(this._lastTapX, this._lastTapY);
+      return;
     }
     if (this.currentState === 'game' && this.game) {
       const g = this.game;

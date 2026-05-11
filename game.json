@@ -1,5 +1,7 @@
 {
   "deviceOrientation": "portrait",
+  "renderMode": "separatedContext",
+  "AndroidAdaptation": true,
   "subpackages": [
     {
       "name": "animation",

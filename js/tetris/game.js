@@ -340,6 +340,9 @@ export default class TetrisGame {
       registerEvent(EVENT_BOOM, () => { this.triggerBomb(); });
     }
 
+    // 预绑定游戏循环函数，避免每帧创建新闭包
+    this._boundLoop = this.gameLoop.bind(this);
+
     // 初始化
     this.init();
   }
@@ -947,13 +950,6 @@ export default class TetrisGame {
    * 设置输入监听
    */
   setupInput() {
-    wx.onKeyDown((res) => {
-      this.keys[res.keyCode] = true;
-    });
-
-    wx.onKeyUp((res) => {
-      this.keys[res.keyCode] = false;
-    });
   }
 
   /**
@@ -2339,7 +2335,7 @@ export default class TetrisGame {
     this.update(deltaTime);
     this.render();
 
-    this.aniId = requestAnimationFrame(this.gameLoop.bind(this));
+    this.aniId = requestAnimationFrame(this._boundLoop);
   }
 
   /**

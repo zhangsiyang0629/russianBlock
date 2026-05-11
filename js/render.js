@@ -1,17 +1,21 @@
-GameGlobal.canvas = wx.createCanvas();
+const cvs = wx.createCanvas();
+if (typeof GameGlobal !== 'undefined') {
+  GameGlobal.canvas = cvs;
+}
 
-// 尝试获取窗口信息，如果失败（可能是隐私授权未通过）则使用默认值
+// 尝试获取窗口信息
 let windowInfo;
 try {
   windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
 } catch (error) {
   console.warn('获取窗口信息失败，使用默认值:', error);
-  // 默认值，大部分手机屏幕尺寸
   windowInfo = {
     screenWidth: 375,
-    screenHeight: 667
+    screenHeight: 667,
+    windowWidth: 375,
+    windowHeight: 667,
   };
 }
 
-canvas.width = windowInfo.screenWidth;
-canvas.height = windowInfo.screenHeight;
+cvs.width = windowInfo.windowWidth || windowInfo.screenWidth;
+cvs.height = windowInfo.windowHeight || windowInfo.screenHeight;
