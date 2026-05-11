@@ -954,6 +954,9 @@ export default class TetrisGame {
           } else if (btn.id === 'restart') {
             if (this.onRestart) { this.onRestart(); } else { this.restart(); }
           } else if (btn.id === 'quit') {
+            if (this.gameMode === 'infinite' && this.score > 0 && !this.gameOver) {
+              saveOnGameOver(this.score, this.highScore);
+            }
             if (this.onQuit) this.onQuit();
           } else if (btn.id === 'musicToggle') {
             this.gameSettings.musicOn = !this.gameSettings.musicOn;
@@ -2308,6 +2311,9 @@ export default class TetrisGame {
    * 重新开始游戏
    */
   restart(savedLevel, savedHighScore) {
+    if (this.gameMode === 'infinite' && this.score > 0 && !this.gameOver) {
+      saveOnGameOver(this.score, this.highScore);
+    }
     this._skipTalk = true;
     this.level = savedLevel || this.level;
     this.eventScheduler.reset(this.level);

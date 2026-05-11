@@ -81,11 +81,11 @@ export default class RankPanel {
     try {
       const saved = wx.getStorageSync('coverSettings');
       if (saved) Object.assign(this.settings, saved);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   saveSettings() {
-    try { wx.setStorageSync('coverSettings', this.settings); } catch (e) {}
+    try { wx.setStorageSync('coverSettings', this.settings); } catch (e) { }
   }
 
   loadAvatarImage(url) {
@@ -174,7 +174,7 @@ export default class RankPanel {
       const db = wx.cloud.database();
       const _ = db.command;
       const orderField = type === 'score' ? 'highScore' : 'level';
-      const filter = type === 'score' ? { gameMode: 'infinite', highScore: _.gt(0) } : { gameMode: 'level', level: _.gt(1) };
+      const filter = type === 'score' ? { highScore: _.gt(0) } : { level: _.gt(1) };
       const res = await db.collection('rankings')
         .where(filter)
         .orderBy(orderField, 'desc')
@@ -856,28 +856,28 @@ export default class RankPanel {
     const hit = this._settingsHitAreas;
 
     if (hit.close && x >= hit.close.x && x <= hit.close.x + hit.close.w &&
-        y >= hit.close.y && y <= hit.close.y + hit.close.h) {
+      y >= hit.close.y && y <= hit.close.y + hit.close.h) {
       this.showingSettings = false;
       this._settingsHitAreas = {};
       return true;
     }
 
     if (hit.backBtn && x >= hit.backBtn.x && x <= hit.backBtn.x + hit.backBtn.w &&
-        y >= hit.backBtn.y && y <= hit.backBtn.y + hit.backBtn.h) {
+      y >= hit.backBtn.y && y <= hit.backBtn.y + hit.backBtn.h) {
       this.showingSettings = false;
       this._settingsHitAreas = {};
       return true;
     }
 
     if (hit.dialog && (x < hit.dialog.x || x > hit.dialog.x + hit.dialog.w ||
-        y < hit.dialog.y || y > hit.dialog.y + hit.dialog.h)) {
+      y < hit.dialog.y || y > hit.dialog.y + hit.dialog.h)) {
       this.showingSettings = false;
       this._settingsHitAreas = {};
       return true;
     }
 
     if (hit.musicToggle && x >= hit.musicToggle.x && x <= hit.musicToggle.x + hit.musicToggle.w &&
-        y >= hit.musicToggle.y && y <= hit.musicToggle.y + hit.musicToggle.h) {
+      y >= hit.musicToggle.y && y <= hit.musicToggle.y + hit.musicToggle.h) {
       this.settings.musicOn = !this.settings.musicOn;
       if (this.cover && this.cover.bgm) {
         if (this.settings.musicOn && this.cover.bgm.paused) {
@@ -894,7 +894,7 @@ export default class RankPanel {
     }
 
     if (hit.musicSlider && x >= hit.musicSlider.x && x <= hit.musicSlider.x + hit.musicSlider.w &&
-        y >= hit.musicSlider.y && y <= hit.musicSlider.y + hit.musicSlider.h) {
+      y >= hit.musicSlider.y && y <= hit.musicSlider.y + hit.musicSlider.h) {
       const vol = Math.max(0, Math.min(1, (x - hit.musicSlider.x) / hit.musicSlider.w));
       this.settings.musicVolume = vol;
       if (this.cover && this.cover.bgm) {
@@ -908,14 +908,14 @@ export default class RankPanel {
     }
 
     if (hit.sfxToggle && x >= hit.sfxToggle.x && x <= hit.sfxToggle.x + hit.sfxToggle.w &&
-        y >= hit.sfxToggle.y && y <= hit.sfxToggle.y + hit.sfxToggle.h) {
+      y >= hit.sfxToggle.y && y <= hit.sfxToggle.y + hit.sfxToggle.h) {
       this.settings.sfxOn = !this.settings.sfxOn;
       this.saveSettings();
       return true;
     }
 
     if (hit.sfxSlider && x >= hit.sfxSlider.x && x <= hit.sfxSlider.x + hit.sfxSlider.w &&
-        y >= hit.sfxSlider.y && y <= hit.sfxSlider.y + hit.sfxSlider.h) {
+      y >= hit.sfxSlider.y && y <= hit.sfxSlider.y + hit.sfxSlider.h) {
       const vol = Math.max(0, Math.min(1, (x - hit.sfxSlider.x) / hit.sfxSlider.w));
       this.settings.sfxVolume = vol;
       this.saveSettings();

@@ -701,7 +701,6 @@ export default class Main {
   handleRankEntry(tab) {
     console.log(`打开排行榜: ${tab}`);
     
-    // 立即显示排行榜，后台并行加载数据
     this.openRankPanel(tab);
     
     // 以下操作后台并行执行
@@ -712,14 +711,6 @@ export default class Main {
     this.ensurePrivacyAuthorized().then(ok => {
       if (!ok) console.warn('隐私授权检查失败');
     });
-    
-    if (!this.playerData) {
-      getOrCreatePlayerData().then(data => {
-        this.playerData = data;
-      }).catch(err => {
-        console.warn('加载玩家数据失败:', err);
-      });
-    }
   }
   
   /**
@@ -765,6 +756,16 @@ export default class Main {
    * 打开排行榜面板
    */
   async openRankPanel(tab) {
+    // 重新加载玩家数据，确保显示最新分数
+    try {
+      const data = await getOrCreatePlayerData();
+      if (data) {
+        this.playerData = data;
+      }
+    } catch (err) {
+      console.warn('获取玩家数据失败:', err);
+    }
+
     if (!this.rankPanel) {
       this.rankPanel = new RankPanel(this.ctx, this.playerData, () => {
         this.closeRankPanel();
@@ -775,6 +776,8 @@ export default class Main {
           this.closeRankPanel();
         },
       });
+    } else {
+      this.rankPanel.playerData = this.playerData;
     }
     
     // 先切换状态、隐藏封面，再异步加载数据，避免卡在封面
