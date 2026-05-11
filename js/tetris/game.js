@@ -302,6 +302,7 @@ export default class TetrisGame {
     }
     if (!getEventHandler(EVENT_INK)) {
       registerEvent(EVENT_INK, () => {
+        this.playSfx('audio/ink.mp3');
         this.inkPhase = 'entering';
         this.inkTimer = 0;
         this.inkScale = 0;
