@@ -349,6 +349,16 @@ export default class TetrisGame {
     this.createNewBlock();
   }
 
+  playSfx(src) {
+    if (typeof wx === 'undefined' || !wx.createInnerAudioContext) return;
+    if (!this.gameSettings.sfxOn) return;
+    const ctx = wx.createInnerAudioContext();
+    ctx.volume = this.gameSettings.sfxVolume;
+    ctx.obeyMuteSwitch = false;
+    ctx.src = src;
+    ctx.play();
+  }
+
   async loadBoomFuseAtlases() {
     if (typeof wx === 'undefined' || !wx.getFileSystemManager) return;
     if (typeof wx !== 'undefined' && wx.loadSubpackage) {
@@ -1176,6 +1186,7 @@ export default class TetrisGame {
 
     const lines = this.grid.clearLines();
     if (lines > 0) {
+      this.playSfx('audio/blockdown.mp3');
       this.linesCleared += lines;
       const points = this.calculateScore(lines);
       const oldScore = this.score;
@@ -1479,7 +1490,10 @@ export default class TetrisGame {
             for (let c = 0; c < this.grid.cols; c++) {
               if (this.grid.getGridData()[row][c]) has = true;
             }
-            if (has) this.grid.startClearAnimation([row]);
+            if (has) {
+              this.grid.startClearAnimation([row]);
+              this.playSfx('audio/blockdown.mp3');
+            }
             for (let c = 0; c < this.grid.cols; c++) {
               this.grid.setCell(row, c, 0);
             }
