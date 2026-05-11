@@ -360,6 +360,9 @@ export default class TetrisGame {
     ctx.obeyMuteSwitch = false;
     ctx.src = src;
     ctx.play();
+    const destroy = () => { try { ctx.destroy(); } catch (e) {} };
+    ctx.onEnded(destroy);
+    ctx.onError(destroy);
   }
 
   async loadBoomFuseAtlases() {
