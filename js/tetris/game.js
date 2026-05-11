@@ -2310,7 +2310,6 @@ export default class TetrisGame {
   restart(savedLevel, savedHighScore) {
     this._skipTalk = true;
     this.level = savedLevel || this.level;
-    this.updateLevelConfig();
     this.eventScheduler.reset(this.level);
     this.nextBlockConfused = false;
     this.smokeParticles = [];
@@ -2347,7 +2346,27 @@ export default class TetrisGame {
 
     this.failLaughAnim.stop();
 
-    this.resetGridForNewLevel();
+    if (this.gameMode === 'infinite') {
+      this.infiniteSpeedIdx = 0;
+      this.scoreFloats = [];
+      this.scoreStars = [];
+      this.scoreRoll = { active: false, from: 0, to: 0, timer: 0 };
+      this.gridSizeIndex = 2;
+      this.speedIndex = 0;
+      this.initialLayers = 0;
+      const gridCols = 15;
+      const gridRows = 23;
+      const maxCellSizeByWidth = Math.floor(this.availableWidth / gridCols);
+      const maxCellSizeByHeight = Math.floor(this.availableHeight / gridRows);
+      const cellSize = Math.min(maxCellSizeByWidth, maxCellSizeByHeight, 30);
+      const safeCellSize = Math.max(8, cellSize);
+      this.cellSize = safeCellSize;
+      this.grid = new Grid(safeCellSize, gridCols, gridRows);
+      this.createNewBlock();
+    } else {
+      this.updateLevelConfig();
+      this.resetGridForNewLevel();
+    }
 
     if (this.musicManager) {
       this.musicManager.playRandom();
