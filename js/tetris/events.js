@@ -12,6 +12,12 @@ export function getEventHandler(eventId) {
   return registry.get(eventId);
 }
 
+const EVENT_TRIGGER_PROBABILITY = {
+  [EVENT_CONFUSION]: 50,
+  [EVENT_INK]: 50,
+  [EVENT_BOOM]: 30,
+};
+
 const LEVEL_EVENT_CONFIGS = {
   1: { eventIds: [], triggerBlocks: [], triggerProbability: 0 },
   2: { eventIds: [], triggerBlocks: [], triggerProbability: 0 },
@@ -25,7 +31,7 @@ const LEVEL_EVENT_CONFIGS = {
 
 export function getLevelEventConfig(level) {
   const config = LEVEL_EVENT_CONFIGS[level];
-  if (!config) return { eventIds: [-1], triggerBlocks: [5, 8, 10], triggerProbability: 50 };
+  if (!config) return { eventIds: [-1], triggerBlocks: [5, 8, 10] };
   return config;
 }
 
@@ -62,6 +68,10 @@ export class EventScheduler {
     let ids = this.config.eventIds;
     if (ids.length === 0) return null;
     if (ids[0] === -1) ids = [...registry.keys()];
+    const eventId = ids[Math.floor(Math.random() * ids.length)];
+
+    const triggerProbability = this.config.triggerProbability || EVENT_TRIGGER_PROBABILITY[eventId] || 0;
+    if (Math.random() * 100 >= triggerProbability) return null;
     return ids[Math.floor(Math.random() * ids.length)];
   }
 }
