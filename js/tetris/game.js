@@ -2332,6 +2332,7 @@ export default class TetrisGame {
     this.gameState = 'playing';
     this.reviveUsed = false;
     this.failLaughAnim.stop();
+    this.playSfx('audio/talk.mp3');
     this.startTalk(this.level - 1, this._talkPrevGrid, this._talkPrevSpeed);
   }
 
