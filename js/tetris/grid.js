@@ -359,26 +359,22 @@ export default class Grid {
     ctx.lineWidth = GRID_COLORS.borderWidth;
     ctx.strokeRect(0, 0, width, height);
 
-    // 绘制内部网格线（半透明）
+    // 绘制内部网格线（半透明，合并为单一路径减少 draw call）
     ctx.strokeStyle = GRID_COLORS.outline;
     ctx.globalAlpha = GRID_COLORS.gridLineOpacity;
     ctx.lineWidth = 0.5;
+    ctx.beginPath();
 
-    // 垂直线
     for (let x = 0; x <= cols; x++) {
-      ctx.beginPath();
       ctx.moveTo(x * cellSize, 0);
       ctx.lineTo(x * cellSize, height);
-      ctx.stroke();
     }
 
-    // 水平线
     for (let y = 0; y <= rows; y++) {
-      ctx.beginPath();
       ctx.moveTo(0, y * cellSize);
       ctx.lineTo(width, y * cellSize);
-      ctx.stroke();
     }
+    ctx.stroke();
 
     // 恢复透明度
     ctx.globalAlpha = 1.0;
@@ -464,43 +460,19 @@ export default class Grid {
     const blockX = x * cell;
     const blockY = y * cell;
 
-    // 保存画布状态
-    ctx.save();
-
-    // 计算基于时间和位置的抖动效果（已落定方块快速小幅度抖动）
-    const time = Date.now() * 0.001; // 转换为秒
-    // 每个方块有独特的相位，基于位置哈希，使相邻方块抖动不同步
-    const phaseHash = (x * 13 + y * 17) * 0.1;
-
-    // 高频小幅度抖动，模拟瑟瑟发抖效果
-    // 旋转（-0.5到0.5度）和位移（-0.5到0.5像素），频率极高（提高一倍）
-    const rotation = Math.sin(time * 30 + phaseHash) * 0.5 * (Math.PI / 180); // -0.5到0.5度
-    const translateX = Math.sin(time * 40 + phaseHash * 1.3) * 0.5; // -0.5到0.5像素
-    const translateY = Math.cos(time * 35 + phaseHash * 1.7) * 0.5; // -0.5到0.5像素
-
-    // 应用变换到方块中心
-    ctx.translate(blockX + cell / 2, blockY + cell / 2);
-    ctx.rotate(rotation);
-    ctx.translate(-cell / 2 + translateX, -cell / 2 + translateY);
-
-    // 绘制方块背景（蜡笔填充效果）
+    // 已放置方块：无抖动，直接绘制减少 save/restore 开销
     ctx.fillStyle = colors[color];
-    ctx.fillRect(0, 0, cell, cell);
+    ctx.fillRect(blockX, blockY, cell, cell);
 
-    // 创建蜡笔纹理（简单的斜线图案）
     ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
     const patternSize = 4;
     for (let i = -patternSize; i < cell + patternSize; i += patternSize * 2) {
-      ctx.fillRect(i, 0, patternSize, cell);
+      ctx.fillRect(blockX + i, blockY, patternSize, cell);
     }
 
-    // 绘制方块边框
     ctx.strokeStyle = GRID_COLORS.onBackground;
     ctx.lineWidth = 3;
-    ctx.strokeRect(0, 0, cell, cell);
-
-    // 恢复画布状态
-    ctx.restore();
+    ctx.strokeRect(blockX, blockY, cell, cell);
   }
 
   drawAnimatedBlock(ctx, x, y, color, progress) {

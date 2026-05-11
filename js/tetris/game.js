@@ -355,14 +355,13 @@ export default class TetrisGame {
   playSfx(src) {
     if (typeof wx === 'undefined' || !wx.createInnerAudioContext) return;
     if (!this.gameSettings.sfxOn) return;
-    const ctx = wx.createInnerAudioContext();
-    ctx.volume = this.gameSettings.sfxVolume;
-    ctx.obeyMuteSwitch = false;
-    ctx.src = src;
-    ctx.play();
-    const destroy = () => { try { ctx.destroy(); } catch (e) {} };
-    ctx.onEnded(destroy);
-    ctx.onError(destroy);
+    if (!this._sfxCtx) {
+      this._sfxCtx = wx.createInnerAudioContext();
+      this._sfxCtx.obeyMuteSwitch = false;
+    }
+    this._sfxCtx.volume = this.gameSettings.sfxVolume;
+    this._sfxCtx.src = src;
+    this._sfxCtx.play();
   }
 
   async loadBoomFuseAtlases() {
@@ -2483,6 +2482,21 @@ export default class TetrisGame {
 
     // 取消动画帧
     cancelAnimationFrame(this.aniId);
+
+    // 释放音效
+    if (this._sfxCtx) {
+      this._sfxCtx.destroy();
+      this._sfxCtx = null;
+    }
+
+    // 释放图片资源
+    this.starImage = null;
+    this.smokeImage = null;
+    this.inkImage = null;
+    this.boomImage = null;
+    this.bombFallImage = null;
+    this.talkImages = [];
+    this.bombFuseImages = [];
   }
 }
 

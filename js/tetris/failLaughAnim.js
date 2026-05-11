@@ -119,6 +119,7 @@ export default class FailLaughAnimation {
 
   stop() {
     this.active = false;
+    this.images = [];
     if (this.onComplete) {
       this.onComplete();
       this.onComplete = null;
