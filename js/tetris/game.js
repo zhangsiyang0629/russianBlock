@@ -273,7 +273,7 @@ export default class TetrisGame {
     this.loadTalkAtlases();
 
     // 事件系统
-    this.eventScheduler = new EventScheduler(this.level);
+    this.eventScheduler = new EventScheduler(this.gameMode === 'infinite' ? 0 : this.level);
     this.nextBlockConfused = false;
     this.victoryEffects = new Effects();
     this.smokeImage = null;
@@ -1496,7 +1496,7 @@ export default class TetrisGame {
             const oldSpeed = this.speedIndex;
             this.level = this.level + 1;
             this.updateLevelConfig();
-            this.eventScheduler.reset(this.level);
+            this.eventScheduler.reset(this.gameMode === 'infinite' ? 0 : this.level);
             this.resetGridForNewLevel();
             if (this.musicManager) {
               this.musicManager.playRandom();

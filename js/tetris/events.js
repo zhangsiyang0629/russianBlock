@@ -50,7 +50,7 @@ export class EventScheduler {
 
   onBlockLanded() {
     this.blockCount++;
-    // console.log("this.blockCount:", this.blockCount, "this.currentInterval:", this.currentInterval)
+    console.log("this.blockCount:", this.blockCount, "this.currentInterval:", this.currentInterval)
     if (this.blockCount < this.currentInterval) return null;
 
     this.blockCount = 0;
