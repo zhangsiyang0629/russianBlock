@@ -13,8 +13,8 @@ export function getEventHandler(eventId) {
 }
 
 const EVENT_TRIGGER_PROBABILITY = {
-  [EVENT_CONFUSION]: 50,
-  [EVENT_INK]: 50,
+  [EVENT_CONFUSION]: 70,
+  [EVENT_INK]: 70,
   [EVENT_BOOM]: 30,
 };
 
