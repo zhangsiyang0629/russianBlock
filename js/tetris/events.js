@@ -72,6 +72,6 @@ export class EventScheduler {
 
     const triggerProbability = this.config.triggerProbability || EVENT_TRIGGER_PROBABILITY[eventId] || 0;
     if (Math.random() * 100 >= triggerProbability) return null;
-    return ids[Math.floor(Math.random() * ids.length)];
+    return eventId;
   }
 }
