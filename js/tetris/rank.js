@@ -138,8 +138,20 @@ export default class RankPanel {
     this.isLoading = true;
     this.scrollOffset = 0;
     this.avatarImages = {};
+    this._shareImgLoaded = false;
+
+    // 加载分享图标
+    this._loadShareImage();
 
     await this.loadPage();
+  }
+
+  _loadShareImage() {
+    if (typeof wx === 'undefined' || !wx.createImage) return;
+    this._shareImg = wx.createImage();
+    this._shareImg.onload = () => { this._shareImgLoaded = true; };
+    this._shareImg.onerror = () => {};
+    this._shareImg.src = 'subpackages/images/share.png';
   }
 
   hide() {
@@ -280,6 +292,18 @@ export default class RankPanel {
         }
         return true;
       }
+    }
+
+    // 分享按钮（底部）
+    if (this.shareBtn && x >= this.shareBtn.x && x <= this.shareBtn.x + this.shareBtn.w && y >= this.shareBtn.y && y <= this.shareBtn.y + this.shareBtn.h) {
+      const tabLabel = this.activeTab === 'score' ? '分数榜' : '关卡榜';
+      const myItem = this.findMyItem();
+      const myVal = myItem ? (this.activeTab === 'score' ? myItem.highScore : myItem.level) : 0;
+      const title = `我在俄罗斯方块${tabLabel}排名中获得了${myVal}分，来挑战吧！`;
+      if (typeof wx !== 'undefined' && wx.shareAppMessage) {
+        wx.shareAppMessage({ title });
+      }
+      return true;
     }
 
     const listArea = this.getListArea();
@@ -561,6 +585,15 @@ export default class RankPanel {
     }
   }
 
+  drawLoading(ctx, w) {
+    const listArea = this.getListArea();
+    ctx.fillStyle = COLORS.onSurfaceVariant;
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('加载中...', w / 2, (listArea.top + listArea.bottom) / 2);
+  }
+
   drawListItem(ctx, w, item, index, y) {
     const marginX = 12;
     const itemW = w - marginX * 2;
@@ -602,7 +635,6 @@ export default class RankPanel {
     ctx.fill();
     ctx.stroke();
     ctx.restore();
-    this.drawAvatar(ctx, avatarCx, avatarCy, avatarR, item.avatarUrl);
 
     const textX = avatarX + avatarSize + 10;
     ctx.fillStyle = COLORS.onSurface;
@@ -625,15 +657,6 @@ export default class RankPanel {
     ctx.fillText(displayVal, marginX + itemW - 12, y + ITEM_HEIGHT / 2);
   }
 
-  drawLoading(ctx, w) {
-    const listArea = this.getListArea();
-    ctx.fillStyle = COLORS.onSurfaceVariant;
-    ctx.font = '16px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('加载中...', w / 2, (listArea.top + listArea.bottom) / 2);
-  }
-
   drawBottomPlayer(ctx, w, h) {
     const py = h - BOTTOM_PLAYER_HEIGHT - BOTTOM_NAV_HEIGHT;
     const marginX = 12;
@@ -650,6 +673,29 @@ export default class RankPanel {
     ctx.strokeStyle = COLORS.primary;
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, pw, BOTTOM_PLAYER_HEIGHT);
+    ctx.restore();
+
+    // 分享按钮（头像左侧）
+    const shareSize = 36;
+    const shareX = marginX + 6;
+    const shareY = py + (BOTTOM_PLAYER_HEIGHT - shareSize) / 2;
+    this.shareBtn = { x: shareX, y: shareY, w: shareSize, h: shareSize };
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(shareX + shareSize / 2, shareY + shareSize / 2, shareSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fillStyle = COLORS.primary;
+    ctx.fill();
+    if (this._shareImgLoaded && this._shareImg) {
+      const s = 22;
+      ctx.drawImage(this._shareImg, shareX + (shareSize - s) / 2, shareY + (shareSize - s) / 2, s, s);
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('↗', shareX + shareSize / 2, shareY + shareSize / 2 + 1);
+    }
     ctx.restore();
 
     const avatarX = marginX + 50;
@@ -923,6 +969,16 @@ export default class RankPanel {
     }
 
     return true;
+  }
+
+  findMyItem() {
+    if (!this.playerData || !this.playerData._openid) return null;
+    for (const item of this.listData) {
+      if (item._openid === this.playerData._openid) {
+        return item;
+      }
+    }
+    return null;
   }
 
   findMyRank() {

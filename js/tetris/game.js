@@ -238,6 +238,13 @@ export default class TetrisGame {
       height: 0,
       visible: false
     };
+    this.victoryShareButton = {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      visible: false
+    };
 
     this.gameState = 'playing';
     this.winRow = 0;
@@ -248,11 +255,15 @@ export default class TetrisGame {
     this.scoreFloats = [];
     this.scoreStars = [];
     this.starImage = null;
+    this.shareImage = null;
     this.scoreRoll = { active: false, from: 0, to: 0, timer: 0 };
     if (typeof wx !== 'undefined' && wx.createImage) {
       const s = wx.createImage();
       s.onload = () => { this.starImage = s; };
       s.src = 'subpackages/images/star.png';
+      const sh = wx.createImage();
+      sh.onload = () => { this.shareImage = sh; };
+      sh.src = 'subpackages/images/share.png';
     }
 
     // 控制按钮状态（左移、加速、变换、右移）
@@ -299,7 +310,8 @@ export default class TetrisGame {
     this.inkImage = null;
     if (typeof wx !== 'undefined' && wx.createImage) {
       const img = wx.createImage();
-      img.onload = () => { this.inkImage = img; };
+      this.inkImage = img;
+      img.onload = () => {};
       img.src = 'subpackages/images/ink.png';
     }
     if (!getEventHandler(EVENT_INK)) {
@@ -345,6 +357,31 @@ export default class TetrisGame {
 
     // 初始化
     this.init();
+  }
+
+  shareToGameCircle(title) {
+    if (typeof wx === 'undefined') return;
+    if (wx.shareAppMessage) {
+      wx.shareAppMessage({
+        title: title,
+        success: () => console.log('分享成功'),
+        fail: () => console.log('分享取消'),
+      });
+    }
+  }
+
+  shareAppMessage(title, onSuccess) {
+    if (typeof wx === 'undefined') return;
+    if (wx.shareAppMessage) {
+      wx.shareAppMessage({
+        title: title,
+        success: () => {
+          console.log('分享成功');
+          if (onSuccess) onSuccess();
+        },
+        fail: () => console.log('分享取消或失败'),
+      });
+    }
   }
 
   setState(newState) {
@@ -1003,11 +1040,16 @@ export default class TetrisGame {
         this.showVictoryPopup = false;
         this.victoryButton.visible = false;
         this.victoryQuitButton.visible = false;
+        this.victoryShareButton.visible = false;
         this.resetForNextLevel();
         return;
       }
       if (this.victoryQuitButton.visible && x >= this.victoryQuitButton.x && x <= this.victoryQuitButton.x + this.victoryQuitButton.width && y >= this.victoryQuitButton.y && y <= this.victoryQuitButton.y + this.victoryQuitButton.height) {
         if (this.onQuit) this.onQuit();
+        return;
+      }
+      if (this.victoryShareButton && this.victoryShareButton.visible && x >= this.victoryShareButton.x && x <= this.victoryShareButton.x + this.victoryShareButton.width && y >= this.victoryShareButton.y && y <= this.victoryShareButton.y + this.victoryShareButton.height) {
+        this.shareAppMessage(`我刚刚通关了第${this.level}关，来挑战我吧！`);
         return;
       }
     }
@@ -1018,6 +1060,22 @@ export default class TetrisGame {
           console.log(`点击游戏结束按钮: ${btn.id}`, x, y);
           if (btn.id === 'revive') {
             this.reviveByAd();
+          } else if (btn.id === 'shareRevive') {
+            const title = this.gameMode === 'infinite'
+              ? `我在无尽模式得了${this.score}分，来挑战我吧！`
+              : `我玩到了第${this.level}关，得分${this.score}，来挑战我吧！`;
+            this.shareAppMessage(title, () => {
+              // 分享成功，执行复活
+              const savedScore = this.score;
+              const savedHighScore = this.highScore;
+              this.restart(this.level, savedHighScore);
+              this.reviveUsed = true;
+              if (this.gameMode === 'infinite') {
+                this.score = savedScore;
+                this.highScore = Math.max(savedHighScore, savedScore);
+              }
+              this.failLaughAnim.stop();
+            });
           } else if (btn.id === 'restart') {
             this._adError = '';
             if (this.onRestart) {
@@ -2145,7 +2203,7 @@ export default class TetrisGame {
       const btnW = 180;
       const btnH = 44;
       const btnGap = 12;
-      const dh = padding * 2 + titleH + 16 + msgH + 20 + btnH * 2 + btnGap;
+      const dh = padding * 2 + titleH + 16 + msgH + 20 + btnH * 3 + btnGap * 2;
       const dx = (w - dw) / 2;
       const dy = adHeight + (h - adHeight - dh) / 2;
 
@@ -2174,7 +2232,8 @@ export default class TetrisGame {
       ctx.fillText(this.victoryMessage, dx + dw / 2, dy + padding + titleH + 16 + msgH / 2);
 
       const btnX = dx + (dw - btnW) / 2;
-      const nextBtnY = dy + padding + titleH + 16 + msgH + 20;
+      const shareBtnY = dy + padding + titleH + 16 + msgH + 20;
+      const nextBtnY = shareBtnY + btnH + btnGap;
       const quitBtnY = nextBtnY + btnH + btnGap;
 
       const drawVictoryBtn = (y, text, color) => {
@@ -2195,10 +2254,17 @@ export default class TetrisGame {
         ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        if (text === 'SHARE' && this.shareImage) {
+          const iconSize = 22;
+          const tw = ctx.measureText(text).width;
+          const iconX = btnX + btnW / 2 - tw / 2 - iconSize - 6;
+          ctx.drawImage(this.shareImage, iconX, y + (btnH - iconSize) / 2, iconSize, iconSize);
+        }
         ctx.fillText(text, btnX + btnW / 2, y + btnH / 2);
         ctx.restore();
       };
 
+      drawVictoryBtn(shareBtnY, 'SHARE', '#4a90d9');
       drawVictoryBtn(nextBtnY, 'NEXT', '#fdd1b4');
       drawVictoryBtn(quitBtnY, 'QUIT', '#ff8c94');
       ctx.restore();
@@ -2208,6 +2274,14 @@ export default class TetrisGame {
       this.victoryButton.width = btnW;
       this.victoryButton.height = btnH;
       this.victoryButton.visible = true;
+
+      this.victoryShareButton = {
+        x: btnX,
+        y: shareBtnY,
+        width: btnW,
+        height: btnH,
+        visible: true,
+      };
 
       this.victoryQuitButton.x = btnX;
       this.victoryQuitButton.y = quitBtnY;
@@ -2282,9 +2356,11 @@ export default class TetrisGame {
         ctx.fillText(this._adError, w / 2, dy + padding + titleH + 14 + textBlockH + 10 + btnH / 2);
       }
 
-      const gameOverBtns = this._adLoading ? [] : (this.reviveUsed
-        ? [{ id: 'restart', text: 'RESTART' }, { id: 'quit', text: 'QUIT' }]
-        : [{ id: 'revive', text: '▶ AD' }, { id: 'restart', text: 'RESTART' }, { id: 'quit', text: 'QUIT' }]);
+      const gameOverBtns = this._adLoading ? [] : [
+        ...(this.reviveUsed ? [] : [{ id: 'shareRevive', text: '复活' }]),
+        { id: 'restart', text: 'RESTART' },
+        { id: 'quit', text: 'QUIT' },
+      ];
 
       for (let i = 0; i < gameOverBtns.length; i++) {
         const btn = gameOverBtns[i];
@@ -2300,7 +2376,7 @@ export default class TetrisGame {
         drawRoundedRect(ctx, btnX + 3, btnY + 3, btnW, btnH, btnH / 2);
         ctx.fill();
 
-        const btnBgColor = btn.id === 'revive' ? '#a3e1ca' : btn.id === 'restart' ? '#fdd1b4' : '#ff8c94';
+        const btnBgColor = btn.id === 'shareRevive' ? '#a3e1ca' : btn.id === 'restart' ? '#fdd1b4' : '#ff8c94';
         ctx.fillStyle = btnBgColor;
         ctx.strokeStyle = '#322f22';
         ctx.lineWidth = 3;
@@ -2314,14 +2390,22 @@ export default class TetrisGame {
         ctx.font = 'bold 15px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        if (btn.id === 'shareRevive' && this.shareImage) {
+          const iconSize = 22;
+          const iconX = btnX + btnW / 2 - ctx.measureText(btn.text).width / 2 - iconSize - 6;
+          const iconY = btnY + (btnH - iconSize) / 2;
+          ctx.drawImage(this.shareImage, iconX, iconY, iconSize, iconSize);
+        }
         ctx.fillText(btn.text, btnX + btnW / 2, btnY + btnH / 2);
       }
 
       this.victoryButton.visible = false;
       this.victoryQuitButton.visible = false;
+      this.victoryShareButton.visible = false;
     } else {
       this.victoryButton.visible = false;
       this.victoryQuitButton.visible = false;
+      this.victoryShareButton.visible = false;
     }
   }
 
@@ -2345,6 +2429,7 @@ export default class TetrisGame {
     this.showVictoryPopup = false;
     this.victoryButton.visible = false;
     this.victoryQuitButton.visible = false;
+    this.victoryShareButton.visible = false;
     this.victoryEffects.clear();
     this.scoreFloats = [];
     this.scoreStars = [];
@@ -2398,6 +2483,7 @@ export default class TetrisGame {
     this.victoryQuitButton.y = 0;
     this.victoryQuitButton.width = 0;
     this.victoryQuitButton.height = 0;
+    this.victoryShareButton = { x: 0, y: 0, width: 0, height: 0, visible: false };
 
     this.failLaughAnim.stop();
 
@@ -2487,6 +2573,7 @@ export default class TetrisGame {
 
     // 释放图片资源
     this.starImage = null;
+    this.shareImage = null;
     this.smokeImage = null;
     this.inkImage = null;
     this.boomImage = null;

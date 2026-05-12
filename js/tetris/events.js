@@ -15,7 +15,7 @@ export function getEventHandler(eventId) {
 const EVENT_TRIGGER_PROBABILITY = {
   [EVENT_CONFUSION]: 70,
   [EVENT_INK]: 70,
-  [EVENT_BOOM]: 30,
+  [EVENT_BOOM]: 40,
 };
 
 const LEVEL_EVENT_CONFIGS = {

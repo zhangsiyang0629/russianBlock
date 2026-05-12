@@ -80,7 +80,10 @@ export default class Main {
     
     // 绑定全局事件
     this.bindEvents();
-    
+
+    // 设置全局分享
+    this.setupShareMessage();
+
     // 开始主循环
     this.startMainLoop();
   }
@@ -437,7 +440,14 @@ export default class Main {
       }
     });
   }
-  
+
+  setupShareMessage() {
+    if (typeof wx === 'undefined' || !wx.onShareAppMessage) return;
+    wx.onShareAppMessage(() => ({
+      title: '一款好玩的俄罗斯方块小游戏，快来挑战！',
+    }));
+  }
+
   handleTouchStart(x, y) {
     if (this.currentState === 'rank' && this.rankPanel) {
       this.rankPanel.handleTouchStart(x, y);
@@ -471,6 +481,22 @@ export default class Main {
     } else if (clickedId === 'settingsNav') {
       if (this.cover) {
         this.cover.showSettings();
+      }
+    } else if (clickedId === 'shareEnergy') {
+      if (typeof wx !== 'undefined' && wx.showModal) {
+        wx.showModal({
+          title: '体力不足',
+          content: '分享给好友可以获得体力，继续游戏！',
+          confirmText: '分享',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm && wx.shareAppMessage) {
+              wx.shareAppMessage({
+                title: '一款好玩的俄罗斯方块小游戏，快来挑战！',
+              });
+            }
+          },
+        });
       }
     }
   }
@@ -558,8 +584,10 @@ export default class Main {
     // 检查体力
     if (!this.energyManager.hasEnoughEnergy()) {
       console.warn('体力不足，无法开始游戏');
-      this.isStartingGame = false; // 重置标志
-      // TODO: 显示UI提示
+      this.isStartingGame = false;
+      if (typeof wx !== 'undefined' && wx.showToast) {
+        wx.showToast({ title: '体力不足', icon: 'none', duration: 1500 });
+      }
       return;
     }
     
@@ -603,6 +631,9 @@ export default class Main {
         };
         this.game.onRestart = () => {
           if (!this.energyManager.hasEnoughEnergy()) {
+            if (typeof wx !== 'undefined' && wx.showToast) {
+              wx.showToast({ title: '体力不足', icon: 'none', duration: 1500 });
+            }
             return;
           }
           this.energyManager.consumeEnergy();
@@ -661,6 +692,11 @@ export default class Main {
     }
     
     this.currentState = 'cover';
+
+    // 刷新玩家数据（确保通关后等级等数据最新）
+    getOrCreatePlayerData().then(data => {
+      if (data) this.playerData = data;
+    }).catch(() => {});
 
     // 尝试绑定微信用户信息（如果尚未绑定）
     this.tryBindUserInfo();

@@ -1018,27 +1018,20 @@ export default class Cover {
         y >= button.y && y <= button.y + button.height) {
         console.log(`点击按钮: ${button.id}`);
 
-        if (button.id === 'play') {
-          if (this.getEnergyInfo) {
-            const energyInfo = this.getEnergyInfo();
-            if (energyInfo && !energyInfo.hasEnough) {
+        if (button.id === 'play' || button.id === 'infinite') {
+          if (button.id === 'infinite') {
+            const isUnlocked = this.getPlayerLevel ? this.getPlayerLevel() > 7 : false;
+            if (!isUnlocked) {
+              this.infiniteTooltip.active = true;
+              this.infiniteTooltip.timer = 0;
+              this.infiniteTooltip.alpha = 0;
               return null;
             }
           }
-        }
-
-        if (button.id === 'infinite') {
-          const isUnlocked = this.getPlayerLevel ? this.getPlayerLevel() > 7 : false;
-          if (!isUnlocked) {
-            this.infiniteTooltip.active = true;
-            this.infiniteTooltip.timer = 0;
-            this.infiniteTooltip.alpha = 0;
-            return null;
-          }
           if (this.getEnergyInfo) {
             const energyInfo = this.getEnergyInfo();
             if (energyInfo && !energyInfo.hasEnough) {
-              return null;
+              return 'shareEnergy';
             }
           }
         }
