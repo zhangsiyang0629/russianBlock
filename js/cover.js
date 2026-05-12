@@ -12,31 +12,31 @@ export default class Cover {
     this.canvas = ctx.canvas;
     this.musicManager = musicManager;
     this.getPlayerLevel = getPlayerLevel;
-    
+
     // 封面状态
     this.active = true;
     this.resourcesLoaded = false;
 
     // 封面特效
     this.effects = new Effects();
-    
+
     // 图片资源
     this.characterImage = null;
-    
+
     // 按钮定义
     this.buttons = [
       { id: 'play', text: 'PLAY', x: 0, y: 0, width: 0, height: 0, color: '#FFB347' },
       { id: 'infinite', text: 'INFINITE', x: 0, y: 0, width: 0, height: 0, color: '#a3e1ca' },
     ];
     this.infiniteTooltip = { active: false, timer: 0, alpha: 0 };
-    
+
     // 底部导航
     this.navItems = [
       { id: 'scoresNav', icon: '📊', text: 'Scores', active: true },
       { id: 'levelsNav', icon: '🎯', text: 'Levels', active: true },
       { id: 'settingsNav', icon: '⚙', text: 'Settings', active: false }
     ];
-    
+
     // 隐私协议状态
     this.privacyAgreed = false; // 初始状态为未同意
     this.privacyCheckbox = { id: 'privacyCheckbox', x: 0, y: 0, size: 20 };
@@ -44,25 +44,25 @@ export default class Cover {
       terms: { id: 'termsLink', text: '用户服务协议' },
       privacy: { id: 'privacyLink', text: '隐私保护政策' }
     };
-    
+
     // 回调函数
     this.getEnergyInfo = getEnergyInfo;
     this.onPrivacyAction = onPrivacyAction;
-    
+
     // 隐私协议状态管理
     this.privacyPending = false; // 授权进行中标志
     // 从本地存储读取授权完成状态，避免启动时勾选框闪烁
     let savedAuth = false;
     try {
       savedAuth = !!wx.getStorageSync('privacyAuthorized');
-    } catch (e) {}
+    } catch (e) { }
     this.authorizationCompleted = savedAuth; // 微信隐私授权是否已完成
 
     // 微信用户信息绑定状态
     let savedUserInfoBound = false;
-    try { savedUserInfoBound = !!wx.getStorageSync('userInfoBound'); } catch (e) {}
+    try { savedUserInfoBound = !!wx.getStorageSync('userInfoBound'); } catch (e) { }
     this.userInfoBound = savedUserInfoBound;
-    
+
     // 设置面板
     this.showingSettings = false;
     this.settings = {
@@ -76,7 +76,7 @@ export default class Cover {
 
     // 初始化背景音乐
     this.initBgm();
-    
+
     // 开始加载资源
     this.loadResources();
   }
@@ -98,7 +98,7 @@ export default class Cover {
     this.bgm.onError((res) => {
       console.warn('背景音乐播放失败:', res);
     });
-    const cloudFileId = 'cloud://cloudbase-d5gyz0rzwf3c9a078.636c-cloudbase-d5gyz0rzwf3c9a078-1424022365/bgm/cover.mp3';
+    const cloudFileId = 'cloud://cloudbase-d5gyz0rzwf3c9a078.636c-cloudbase-d5gyz0rzwf3c9a078-1424022365/bgm/cover1.mp3';
     const playBgm = () => {
       if ((this.bgmPendingPlay || this.active) && this.settings.musicOn) {
         this.bgm.play();
@@ -109,7 +109,7 @@ export default class Cover {
       if (typeof wx.cloud !== 'undefined' && initCloud()) {
         wx.cloud.callFunction({
           name: 'getCosUrl',
-          data: { bucket: 'gamebgm-1333103280', fileKey: 'cover.mp3' },
+          data: { bucket: 'gamebgm-1333103280', fileKey: 'cover1.mp3' },
           success: (res) => {
             if (res.result && res.result.url) {
               this.bgm.src = res.result.url;
@@ -150,7 +150,7 @@ export default class Cover {
       tryCosSigned();
     }
   }
-  
+
   /**
    * 从本地存储加载设置
    */
@@ -163,7 +163,7 @@ export default class Cover {
         if (typeof saved.sfxOn === 'boolean') this.settings.sfxOn = saved.sfxOn;
         if (typeof saved.sfxVolume === 'number') this.settings.sfxVolume = saved.sfxVolume;
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   /**
@@ -172,7 +172,7 @@ export default class Cover {
   saveSettings() {
     try {
       wx.setStorageSync('coverSettings', this.settings);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   /**
@@ -344,25 +344,25 @@ export default class Cover {
     const hit = this._settingsHitAreas;
 
     if (hit.close && x >= hit.close.x && x <= hit.close.x + hit.close.w &&
-        y >= hit.close.y && y <= hit.close.y + hit.close.h) {
+      y >= hit.close.y && y <= hit.close.y + hit.close.h) {
       this.hideSettings();
       return null;
     }
 
     if (hit.backBtn && x >= hit.backBtn.x && x <= hit.backBtn.x + hit.backBtn.w &&
-        y >= hit.backBtn.y && y <= hit.backBtn.y + hit.backBtn.h) {
+      y >= hit.backBtn.y && y <= hit.backBtn.y + hit.backBtn.h) {
       this.hideSettings();
       return null;
     }
 
     if (hit.dialog && (x < hit.dialog.x || x > hit.dialog.x + hit.dialog.w ||
-        y < hit.dialog.y || y > hit.dialog.y + hit.dialog.h)) {
+      y < hit.dialog.y || y > hit.dialog.y + hit.dialog.h)) {
       this.hideSettings();
       return null;
     }
 
     if (hit.musicToggle && x >= hit.musicToggle.x && x <= hit.musicToggle.x + hit.musicToggle.w &&
-        y >= hit.musicToggle.y && y <= hit.musicToggle.y + hit.musicToggle.h) {
+      y >= hit.musicToggle.y && y <= hit.musicToggle.y + hit.musicToggle.h) {
       this.settings.musicOn = !this.settings.musicOn;
       if (this.settings.musicOn) {
         if (this.bgm && this.bgm.paused) {
@@ -378,7 +378,7 @@ export default class Cover {
     }
 
     if (hit.musicSlider && x >= hit.musicSlider.x && x <= hit.musicSlider.x + hit.musicSlider.w &&
-        y >= hit.musicSlider.y && y <= hit.musicSlider.y + hit.musicSlider.h) {
+      y >= hit.musicSlider.y && y <= hit.musicSlider.y + hit.musicSlider.h) {
       const vol = Math.max(0, Math.min(1, (x - hit.musicSlider.x) / hit.musicSlider.w));
       this.settings.musicVolume = vol;
       if (this.bgm) {
@@ -389,14 +389,14 @@ export default class Cover {
     }
 
     if (hit.sfxToggle && x >= hit.sfxToggle.x && x <= hit.sfxToggle.x + hit.sfxToggle.w &&
-        y >= hit.sfxToggle.y && y <= hit.sfxToggle.y + hit.sfxToggle.h) {
+      y >= hit.sfxToggle.y && y <= hit.sfxToggle.y + hit.sfxToggle.h) {
       this.settings.sfxOn = !this.settings.sfxOn;
       this.saveSettings();
       return null;
     }
 
     if (hit.sfxSlider && x >= hit.sfxSlider.x && x <= hit.sfxSlider.x + hit.sfxSlider.w &&
-        y >= hit.sfxSlider.y && y <= hit.sfxSlider.y + hit.sfxSlider.h) {
+      y >= hit.sfxSlider.y && y <= hit.sfxSlider.y + hit.sfxSlider.h) {
       const vol = Math.max(0, Math.min(1, (x - hit.sfxSlider.x) / hit.sfxSlider.w));
       this.settings.sfxVolume = vol;
       this.saveSettings();
@@ -411,18 +411,18 @@ export default class Cover {
    */
   loadResources() {
     console.log('加载封面资源...');
-    
+
     // 加载角色图片
     if (typeof wx !== 'undefined' && wx.createImage) {
       this.characterImage = wx.createImage();
-      
+
       // 尝试多种路径格式，包括不同前缀和分包路径
       const pathFormats = [
         'subpackages/images/mike.png',
         'images/mike.png',
         'mike.png'
       ];
-      
+
       let currentFormat = 0;
 
       const tryLoadImage = (formatIndex) => {
@@ -452,7 +452,7 @@ export default class Cover {
           this.resourcesLoaded = true;
         }
       };
-      
+
       // 开始尝试加载第一个格式
       tryLoadImage(0);
     } else {
@@ -490,17 +490,17 @@ export default class Cover {
 
     this.effects.renderClickRipples(ctx);
   }
-  
+
   /**
    * 绘制纸质纹理背景
    */
   drawPaperTexture() {
     const { ctx, canvas } = this;
-    
+
     // 浅黄色背景
     ctx.fillStyle = '#fffcf5';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     // 简单模拟纸张纹理：绘制一些噪点
     ctx.fillStyle = 'rgba(50, 47, 34, 0.02)';
     for (let i = 0; i < 200; i++) {
@@ -510,7 +510,7 @@ export default class Cover {
       ctx.fillRect(x, y, size, size);
     }
   }
-  
+
   /**
    * 绘制装饰性蜡笔方块
    */
@@ -518,7 +518,7 @@ export default class Cover {
     const { ctx, canvas } = this;
     const width = canvas.width;
     const height = canvas.height;
-    
+
     // 方块1: 粉色，左上方
     ctx.save();
     ctx.fillStyle = '#ef7f87';
@@ -528,7 +528,7 @@ export default class Cover {
     ctx.rotate(-12 * Math.PI / 180);
     this.drawCrayonBlock(ctx, 0, 0, 60, 60);
     ctx.restore();
-    
+
     // 方块2: 绿色，右上方
     ctx.save();
     ctx.fillStyle = '#a3e1ca';
@@ -538,7 +538,7 @@ export default class Cover {
     ctx.rotate(15 * Math.PI / 180);
     this.drawCrayonBlock(ctx, 0, 0, 45, 75);
     ctx.restore();
-    
+
     // 方块3: 橙色，左下方
     ctx.save();
     ctx.fillStyle = '#fdd1b4';
@@ -548,7 +548,7 @@ export default class Cover {
     ctx.rotate(-8 * Math.PI / 180);
     this.drawCrayonBlock(ctx, 0, 0, 75, 52);
     ctx.restore();
-    
+
     // 方块4: 粉色，右下方
     ctx.save();
     ctx.fillStyle = '#ef7f87';
@@ -559,17 +559,17 @@ export default class Cover {
     this.drawCrayonBlock(ctx, 0, 0, 60, 60);
     ctx.restore();
   }
-  
+
   /**
    * 绘制单个蜡笔方块（简化版）
    */
   drawCrayonBlock(ctx, x, y, width, height) {
     // 绘制填充矩形
     ctx.fillRect(x, y, width, height);
-    
+
     // 绘制边框
     ctx.strokeRect(x, y, width, height);
-    
+
     // 简单的蜡笔纹理：绘制一些斜线
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
@@ -582,7 +582,7 @@ export default class Cover {
     }
     ctx.restore();
   }
-  
+
   /**
    * 绘制中央角色部分
    */
@@ -590,14 +590,14 @@ export default class Cover {
     const { ctx, canvas } = this;
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2 - 40;
-    
+
     // 绘制角色图片
     if (this.characterImage) {
       const imgWidth = 200;
       const imgHeight = 200;
       const imgX = centerX - imgWidth / 2;
       const imgY = centerY - imgHeight / 2 - 60;
-      
+
       // 绘制不规则边框
       ctx.save();
       ctx.fillStyle = '#ffffff';
@@ -605,15 +605,15 @@ export default class Cover {
       ctx.lineWidth = 4;
       ctx.translate(imgX, imgY);
       ctx.rotate(-1 * Math.PI / 180);
-      
+
       // 绘制带边框的矩形
       ctx.fillRect(0, 0, imgWidth, imgHeight);
       ctx.strokeRect(0, 0, imgWidth, imgHeight);
-      
+
       // 绘制图片
       ctx.drawImage(this.characterImage, 10, 10, imgWidth - 20, imgHeight - 20);
       ctx.restore();
-      
+
       // 绘制对话气泡
       ctx.save();
       ctx.fillStyle = '#ffffff';
@@ -621,15 +621,15 @@ export default class Cover {
       ctx.lineWidth = 4;
       ctx.translate(imgX + imgWidth - 20, imgY - 20);
       ctx.rotate(12 * Math.PI / 180);
-      
+
       // 绘制圆角矩形
       const bubbleWidth = 120;
       const bubbleHeight = 40;
       const borderRadius = 10;
-      
+
       ctx.fillRect(0, 0, bubbleWidth, bubbleHeight);
       ctx.strokeRect(0, 0, bubbleWidth, bubbleHeight);
-      
+
       // 绘制对话气泡尾部
       ctx.beginPath();
       ctx.moveTo(bubbleWidth - 20, bubbleHeight);
@@ -638,7 +638,7 @@ export default class Cover {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      
+
       // 绘制文字
       ctx.fillStyle = '#322f22';
       ctx.font = 'bold 12px Arial';
@@ -652,13 +652,13 @@ export default class Cover {
       const placeholderHeight = 200;
       const placeholderX = centerX - placeholderWidth / 2;
       const placeholderY = centerY - placeholderHeight / 2 - 60;
-      
+
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = '#322f22';
       ctx.lineWidth = 4;
       ctx.fillRect(placeholderX, placeholderY, placeholderWidth, placeholderHeight);
       ctx.strokeRect(placeholderX, placeholderY, placeholderWidth, placeholderHeight);
-      
+
       ctx.fillStyle = '#322f22';
       ctx.font = '20px Arial';
       ctx.textAlign = 'center';
@@ -686,7 +686,7 @@ export default class Cover {
     const { ctx, canvas } = this;
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2 + 80;
-    
+
     ctx.save();
     ctx.fillStyle = '#FFB347'; // 主色
     ctx.strokeStyle = '#322f22';
@@ -696,18 +696,18 @@ export default class Cover {
     ctx.textBaseline = 'middle';
     ctx.translate(centerX, centerY);
     ctx.rotate(-2 * Math.PI / 180);
-    
+
     // 绘制文字轮廓
     ctx.strokeText('SKETCHY', 0, -30);
     ctx.strokeText('TETRIS', 0, 30);
-    
+
     // 绘制填充文字
     ctx.fillText('SKETCHY', 0, -30);
     ctx.fillText('TETRIS', 0, 30);
-    
+
     ctx.restore();
   }
-  
+
   /**
    * 绘制操作按钮
    */
@@ -715,7 +715,7 @@ export default class Cover {
     const { ctx, canvas } = this;
     const centerX = canvas.width / 2;
     const buttonStartY = canvas.height / 2 + 150;
-    
+
     // Play 按钮
     const playButton = this.buttons[0];
     const playButtonWidth = 300;
@@ -724,12 +724,12 @@ export default class Cover {
     playButton.y = buttonStartY;
     playButton.width = playButtonWidth;
     playButton.height = playButtonHeight;
-    
+
     // 检查体力是否足够
     let buttonColor = playButton.color;
     let textColor = '#ffffff';
     let isDisabled = false;
-    
+
     if (this.getEnergyInfo) {
       const energyInfo = this.getEnergyInfo();
       if (energyInfo && !energyInfo.hasEnough) {
@@ -738,9 +738,9 @@ export default class Cover {
         isDisabled = true;
       }
     }
-    
+
     this.drawButton(ctx, playButton, 0, buttonColor, textColor, isDisabled);
-    
+
     // Infinite 按钮（Play按钮下方）
     const infButton = this.buttons[1];
     const infBtnW = 280;
@@ -798,7 +798,7 @@ export default class Cover {
     if (this.authorizationCompleted) return;
     const checkboxSize = this.privacyCheckbox.size;
     const isAgreed = this.getPrivacyAgreed();
-    
+
     ctx.font = '12px Arial';
     const prefixText = '我已详细阅读并同意';
     const prefixWidth = ctx.measureText(prefixText).width;
@@ -808,31 +808,31 @@ export default class Cover {
     const andWidth = ctx.measureText(andText).width;
     const privacyLink = this.privacyLinks.privacy;
     const privacyWidth = ctx.measureText(privacyLink.text).width;
-    
+
     const totalWidth = checkboxSize + 10 + prefixWidth + termsWidth + andWidth + privacyWidth;
-    
+
     const startX = (canvas.width - totalWidth) / 2;
     const checkboxX = startX;
     const infButton = this.buttons[1];
     const baseY = infButton.y + infButton.height + 12;
     const maxY = canvas.height - 85;
     const checkboxY = Math.min(baseY, maxY);
-    
+
     // 更新勾选框坐标
     this.privacyCheckbox.x = checkboxX;
     this.privacyCheckbox.y = checkboxY;
-    
+
     // 绘制勾选框边框
     ctx.save();
     ctx.strokeStyle = isAgreed ? '#4CAF50' : '#888888';
     ctx.lineWidth = 2;
     ctx.strokeRect(checkboxX, checkboxY, checkboxSize, checkboxSize);
-    
+
     // 如果已勾选，绘制对勾
     if (isAgreed) {
       ctx.fillStyle = '#4CAF50';
       ctx.fillRect(checkboxX + 4, checkboxY + 4, checkboxSize - 8, checkboxSize - 8);
-      
+
       // 绘制白色对勾
       ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 2;
@@ -843,21 +843,21 @@ export default class Cover {
       ctx.stroke();
     }
     ctx.restore();
-    
+
     // 绘制协议文本
     ctx.fillStyle = isAgreed ? '#333333' : '#888888';
     ctx.textAlign = 'left';
     const textX = checkboxX + checkboxSize + 10;
     const textY = checkboxY + checkboxSize / 2 + 4;
-    
+
     // 绘制"我已详细阅读并同意"
     ctx.fillText(prefixText, textX, textY);
-    
+
     // 绘制"用户服务协议"链接
     const termsLinkX = textX + prefixWidth;
     ctx.fillStyle = '#0066CC';
     ctx.fillText(termsLink.text, termsLinkX, textY);
-    
+
     // 绘制下划线
     ctx.beginPath();
     ctx.moveTo(termsLinkX, textY + 2);
@@ -865,16 +865,16 @@ export default class Cover {
     ctx.strokeStyle = '#0066CC';
     ctx.lineWidth = 1;
     ctx.stroke();
-    
+
     // 绘制"和"字
     ctx.fillStyle = '#333333';
     ctx.fillText(andText, termsLinkX + termsWidth, textY);
-    
+
     // 绘制"隐私保护政策"链接
     const privacyLinkX = termsLinkX + termsWidth + andWidth;
     ctx.fillStyle = '#0066CC';
     ctx.fillText(privacyLink.text, privacyLinkX, textY);
-    
+
     // 绘制下划线
     ctx.beginPath();
     ctx.moveTo(privacyLinkX, textY + 2);
@@ -882,49 +882,49 @@ export default class Cover {
     ctx.strokeStyle = '#0066CC';
     ctx.lineWidth = 1;
     ctx.stroke();
-    
+
     // 保存链接区域用于点击检测
     termsLink.x = termsLinkX;
     termsLink.y = textY - 12; // 文本基线以上
     termsLink.width = termsWidth;
     termsLink.height = 16;
-    
+
     privacyLink.x = privacyLinkX;
     privacyLink.y = textY - 12;
     privacyLink.width = privacyWidth;
     privacyLink.height = 16;
   }
-  
+
   /**
    * 绘制单个按钮
    */
   drawButton(ctx, button, rotation = 0, buttonColor = null, textColor = null, isDisabled = false) {
     ctx.save();
-    
+
     // 应用旋转
     const buttonCenterX = button.x + button.width / 2;
     const buttonCenterY = button.y + button.height / 2;
     ctx.translate(buttonCenterX, buttonCenterY);
     ctx.rotate(rotation * Math.PI / 180);
     ctx.translate(-buttonCenterX, -buttonCenterY);
-    
+
     // 绘制阴影（圆角）
     ctx.fillStyle = isDisabled ? '#b2ad9c' : '#322f22';
     const borderRadius = button.height / 2;
     drawRoundedRect(ctx, button.x + 6, button.y + 6, button.width, button.height, borderRadius);
     ctx.fill();
-    
+
     // 绘制按钮背景
     const bgColor = buttonColor || button.color;
     ctx.fillStyle = bgColor;
     ctx.strokeStyle = isDisabled ? '#b2ad9c' : '#322f22';
     ctx.lineWidth = 4;
-    
+
     // 绘制圆角矩形
     drawRoundedRect(ctx, button.x, button.y, button.width, button.height, borderRadius);
     ctx.fill();
     ctx.stroke();
-    
+
     // 绘制按钮文字
     const txtColor = textColor || (button.id === 'play' || button.id === 'infinite' ? '#ffffff' : '#322f22');
     ctx.fillStyle = txtColor;
@@ -936,12 +936,12 @@ export default class Cover {
       button.x + button.width / 2,
       button.y + button.height / 2
     );
-    
+
     ctx.restore();
   }
-  
 
-  
+
+
   /**
    * 绘制底部导航
    */
@@ -949,52 +949,52 @@ export default class Cover {
     const { ctx, canvas } = this;
     const navHeight = 80;
     const navY = canvas.height - navHeight;
-    
+
     // 绘制导航栏背景
     ctx.fillStyle = '#fffcf5';
     ctx.strokeStyle = '#322f22';
     ctx.lineWidth = 4;
     ctx.fillRect(0, navY, canvas.width, navHeight);
     ctx.strokeRect(0, navY, canvas.width, navHeight);
-    
+
     // 绘制导航项
     const itemCount = this.navItems.length;
     const itemWidth = canvas.width / itemCount;
-    
+
     for (let i = 0; i < itemCount; i++) {
       const item = this.navItems[i];
       const itemX = i * itemWidth;
       const itemCenterX = itemX + itemWidth / 2;
-      
+
       if (item.active) {
         // 激活项：绘制彩色背景
         ctx.save();
         ctx.fillStyle = '#FFB347';
         ctx.translate(itemCenterX, navY + navHeight / 2);
         ctx.rotate(-2 * Math.PI / 180);
-        
+
         const activeSize = 50;
         ctx.fillRect(-activeSize / 2, -activeSize / 2, activeSize, activeSize);
-        
+
         ctx.strokeStyle = '#322f22';
         ctx.lineWidth = 4;
         ctx.strokeRect(-activeSize / 2, -activeSize / 2, activeSize, activeSize);
         ctx.restore();
       }
-      
+
       // 绘制图标
       ctx.fillStyle = item.active ? '#ffffff' : '#322f22';
       ctx.font = '24px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(item.icon, itemCenterX, navY + navHeight / 2 - 10);
-      
+
       // 绘制文字
       ctx.font = 'bold 10px Arial';
       ctx.fillText(item.text, itemCenterX, navY + navHeight / 2 + 15);
     }
   }
-  
+
   /**
    * 处理点击事件
    * @param {number} x - 点击X坐标
@@ -1009,15 +1009,15 @@ export default class Cover {
     if (this.showingSettings) {
       return this.handleSettingsClick(x, y);
     }
-    
 
-    
+
+
     // 检查按钮点击
     for (const button of this.buttons) {
       if (x >= button.x && x <= button.x + button.width &&
-          y >= button.y && y <= button.y + button.height) {
+        y >= button.y && y <= button.y + button.height) {
         console.log(`点击按钮: ${button.id}`);
-        
+
         if (button.id === 'play') {
           if (this.getEnergyInfo) {
             const energyInfo = this.getEnergyInfo();
@@ -1042,33 +1042,33 @@ export default class Cover {
             }
           }
         }
-        
+
         return button.id;
       }
     }
-    
+
     console.log('未命中任何按钮，按钮坐标:', JSON.stringify(this.buttons));
-    
+
     // 检查隐私协议勾选框点击（仅当授权未完成时处理）
     if (!this.authorizationCompleted) {
       const checkbox = this.privacyCheckbox;
       console.log(`勾选框坐标: x=${checkbox.x}-${checkbox.x + checkbox.size}, y=${checkbox.y}-${checkbox.y + checkbox.size}, 点击坐标: x=${x}, y=${y}`);
       if (x >= checkbox.x && x <= checkbox.x + checkbox.size &&
-          y >= checkbox.y && y <= checkbox.y + checkbox.size) {
+        y >= checkbox.y && y <= checkbox.y + checkbox.size) {
         console.log('点击隐私协议勾选框，当前状态:', this.privacyAgreed);
-        
+
         // 立即切换本地状态，提供视觉反馈
         const oldState = this.privacyAgreed;
         this.privacyAgreed = !this.privacyAgreed;
         this.privacyPending = true; // 标记授权进行中
         console.log('勾选框点击: 状态从', oldState, '切换到', this.privacyAgreed, 'pending:', this.privacyPending);
-        
+
         // 如果用户勾选了（同意），不显示弹窗，等待wx.requirePrivacyAuthorize触发
         if (this.privacyAgreed) {
           console.log('用户同意隐私协议，等待wx.requirePrivacyAuthorize触发弹窗');
           // 弹窗将在wx.onNeedPrivacyAuthorization回调中显示
         }
-        
+
         // 通过回调函数处理隐私协议勾选框点击
         if (this.onPrivacyAction) {
           console.log('调用onPrivacyAction(checkboxClick)');
@@ -1085,9 +1085,9 @@ export default class Cover {
       const link = this.privacyLinks[linkKey];
       if (link.x && link.y && link.width && link.height) {
         if (x >= link.x && x <= link.x + link.width &&
-            y >= link.y && y <= link.y + link.height) {
+          y >= link.y && y <= link.y + link.height) {
           console.log(`点击协议链接: ${link.id}`);
-          
+
           // 通过回调函数处理协议链接点击
           if (this.onPrivacyAction) {
             this.onPrivacyAction(`${linkKey}Click`);
@@ -1096,7 +1096,7 @@ export default class Cover {
         }
       }
     }
-    
+
     // 检查导航点击
     const navHeight = 80;
     const navY = this.canvas.height - navHeight;
@@ -1110,66 +1110,66 @@ export default class Cover {
         return item.id;
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * 绘制体力信息（右上角）
    */
   drawEnergyInfo() {
     if (!this.getEnergyInfo) return;
-    
+
     const energyInfo = this.getEnergyInfo();
     if (!energyInfo) return;
-    
+
     const { ctx, canvas } = this;
     const energyWidth = 80;
     const energyHeight = 40;
     const margin = 15;
     const energyX = canvas.width - energyWidth - margin;
     const energyY = margin;
-    
+
     // 保存画布状态
     ctx.save();
-    
+
     // 绘制体力卡片背景（旋转-2度）
     ctx.translate(energyX + energyWidth / 2, energyY + energyHeight / 2);
     ctx.rotate(-2 * Math.PI / 180);
     ctx.translate(-energyWidth / 2, -energyHeight / 2);
-    
+
     // 卡片阴影（手动绘制，4px偏移）
     ctx.fillStyle = '#322f22';
     ctx.fillRect(4, 4, energyWidth, energyHeight);
-    
+
     // 卡片背景（使用表面容器高色）
     ctx.fillStyle = '#eae2cb'; // surfaceContainerHigh
     ctx.fillRect(0, 0, energyWidth, energyHeight);
-    
+
     // 卡片边框
     ctx.strokeStyle = '#322f22';
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, energyWidth, energyHeight);
-    
+
     // 体力标题
     ctx.fillStyle = '#5f5b4d'; // onSurfaceVariant
     ctx.font = 'bold 7px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText('ENERGY', energyWidth / 2, 5);
-    
+
     // 体力值（大号显示）
     ctx.fillStyle = energyInfo.hasEnough ? '#993d46' : '#b02500'; // primary or error
     ctx.font = 'bold 16px Arial';
     ctx.textBaseline = 'middle';
     ctx.fillText(energyInfo.display, energyWidth / 2, energyHeight / 2 + 3);
-    
+
     // 恢复倒计时
     ctx.fillStyle = '#5f5b4d'; // onSurfaceVariant
     ctx.font = 'bold 5px Arial';
     ctx.textBaseline = 'top';
     ctx.fillText(`恢复 ${energyInfo.nextRecovery}`, energyWidth / 2, energyHeight - 8);
-    
+
     ctx.restore();
   }
 
@@ -1182,7 +1182,7 @@ export default class Cover {
     this.privacyAgreed = agreed;
     this.privacyPending = false; // 授权完成，清除pending标志
   }
-  
+
   /**
    * 设置隐私授权是否已完成（勾选框消失条件）
    * @param {boolean} completed - 微信隐私授权是否已完成
@@ -1191,7 +1191,7 @@ export default class Cover {
     console.log('setAuthorizationCompleted: 设置状态为', completed);
     this.authorizationCompleted = completed;
   }
-  
+
   /**
    * 获取隐私协议同意状态
    * @returns {boolean} 是否已同意隐私协议
@@ -1202,7 +1202,7 @@ export default class Cover {
       console.log('getPrivacyAgreed: 授权进行中，直接返回本地状态:', this.privacyAgreed);
       return this.privacyAgreed;
     }
-    
+
     // 如果有回调函数，通过回调获取状态
     if (this.onPrivacyAction) {
       const result = this.onPrivacyAction('getAgreedStatus');
@@ -1215,7 +1215,7 @@ export default class Cover {
     }
     return this.privacyAgreed;
   }
-  
+
   /**
    * 隐藏封面
    */
@@ -1231,7 +1231,7 @@ export default class Cover {
     }
     console.log('封面隐藏');
   }
-  
+
   /**
    * 显示封面
    */

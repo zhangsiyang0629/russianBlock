@@ -4,7 +4,7 @@ const COS = require('cos-nodejs-sdk-v5')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 exports.main = async (event, context) => {
-  const { bucket = 'gamebgm-1333103280', fileKey = 'cover.mp3', region = 'ap-chengdu' } = event
+  const { bucket = 'gamebgm-1333103280', fileKey = 'cover1.mp3', region = 'ap-chengdu' } = event
 
   const cos = new COS({
     SecretId: process.env.COS_SECRET_ID,

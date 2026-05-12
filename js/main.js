@@ -456,6 +456,9 @@ export default class Main {
 
   handleCoverTap(x, y) {
     if (this.currentState !== 'cover' || !this.cover) return;
+    const now = Date.now();
+    if (this._lastCoverTap && now - this._lastCoverTap < 200) return;
+    this._lastCoverTap = now;
     const clickedId = this.cover.handleClick(x, y);
     if (clickedId === 'play') {
       this.startGame();
@@ -486,7 +489,7 @@ export default class Main {
       this.rankPanel.handleTouchEnd(x, y);
       return;
     }
-    if (this.currentState === 'cover' && this.cover && this._isTap) {
+    if (this.currentState === 'cover' && this.cover && this._isTap && !this.cover.showingSettings) {
       this.handleCoverTap(this._lastTapX, this._lastTapY);
       return;
     }
