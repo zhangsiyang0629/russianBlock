@@ -1061,21 +1061,17 @@ export default class TetrisGame {
           if (btn.id === 'revive') {
             this.reviveByAd();
           } else if (btn.id === 'shareRevive') {
-            const title = this.gameMode === 'infinite'
-              ? `我在无尽模式得了${this.score}分，来挑战我吧！`
-              : `我玩到了第${this.level}关，得分${this.score}，来挑战我吧！`;
-            this.shareAppMessage(title, () => {
-              // 分享成功，执行复活
-              const savedScore = this.score;
-              const savedHighScore = this.highScore;
-              this.restart(this.level, savedHighScore);
-              this.reviveUsed = true;
-              if (this.gameMode === 'infinite') {
-                this.score = savedScore;
-                this.highScore = Math.max(savedHighScore, savedScore);
-              }
-              this.failLaughAnim.stop();
-            });
+            this.gameOver = false;
+            this.reviveUsed = true;
+            const savedScore = this.score;
+            const savedHS = this.highScore;
+            this.restart(this.level, savedHS);
+            this.reviveUsed = true;
+            if (this.gameMode === 'infinite') {
+              this.score = savedScore;
+              this.highScore = Math.max(savedHS, savedScore);
+            }
+            this.failLaughAnim.stop();
           } else if (btn.id === 'restart') {
             this._adError = '';
             if (this.onRestart) {
@@ -2039,9 +2035,9 @@ export default class TetrisGame {
     const btnStartY = sy;
     const btnX = dx + (dw - btnW) / 2;
     const menuBtns = [
-      { id: 'continue', text: 'CONTINUE' },
-      { id: 'restart', text: 'RESTART' },
-      { id: 'quit', text: 'QUIT' },
+      { id: 'continue', text: '继续' },
+      { id: 'restart', text: '重新开始' },
+      { id: 'quit', text: '退出' },
     ];
 
     for (let i = 0; i < menuBtns.length; i++) {
@@ -2254,7 +2250,7 @@ export default class TetrisGame {
         ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        if (text === 'SHARE' && this.shareImage) {
+        if (text === '分享' && this.shareImage) {
           const iconSize = 22;
           const tw = ctx.measureText(text).width;
           const iconX = btnX + btnW / 2 - tw / 2 - iconSize - 6;
@@ -2264,9 +2260,9 @@ export default class TetrisGame {
         ctx.restore();
       };
 
-      drawVictoryBtn(shareBtnY, 'SHARE', '#4a90d9');
-      drawVictoryBtn(nextBtnY, 'NEXT', '#fdd1b4');
-      drawVictoryBtn(quitBtnY, 'QUIT', '#ff8c94');
+      drawVictoryBtn(shareBtnY, '分享', '#4a90d9');
+      drawVictoryBtn(nextBtnY, '下一关', '#fdd1b4');
+      drawVictoryBtn(quitBtnY, '退出', '#ff8c94');
       ctx.restore();
 
       this.victoryButton.x = btnX;
@@ -2358,8 +2354,8 @@ export default class TetrisGame {
 
       const gameOverBtns = this._adLoading ? [] : [
         ...(this.reviveUsed ? [] : [{ id: 'shareRevive', text: '复活' }]),
-        { id: 'restart', text: 'RESTART' },
-        { id: 'quit', text: 'QUIT' },
+        { id: 'restart', text: '重新开始' },
+        { id: 'quit', text: '退出' },
       ];
 
       for (let i = 0; i < gameOverBtns.length; i++) {
@@ -2390,12 +2386,6 @@ export default class TetrisGame {
         ctx.font = 'bold 15px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        if (btn.id === 'shareRevive' && this.shareImage) {
-          const iconSize = 22;
-          const iconX = btnX + btnW / 2 - ctx.measureText(btn.text).width / 2 - iconSize - 6;
-          const iconY = btnY + (btnH - iconSize) / 2;
-          ctx.drawImage(this.shareImage, iconX, iconY, iconSize, iconSize);
-        }
         ctx.fillText(btn.text, btnX + btnW / 2, btnY + btnH / 2);
       }
 

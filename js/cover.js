@@ -22,11 +22,20 @@ export default class Cover {
 
     // 图片资源
     this.characterImage = null;
+    this.logoImage = null;
+
+    // 加载logo
+    if (typeof wx !== 'undefined' && wx.createImage) {
+      const img = wx.createImage();
+      this.logoImage = img;
+      img.onload = () => {};
+      img.src = 'subpackages/images/logoWord.png';
+    }
 
     // 按钮定义
     this.buttons = [
-      { id: 'play', text: 'PLAY', x: 0, y: 0, width: 0, height: 0, color: '#FFB347' },
-      { id: 'infinite', text: 'INFINITE', x: 0, y: 0, width: 0, height: 0, color: '#a3e1ca' },
+      { id: 'play', text: '开始', x: 0, y: 0, width: 0, height: 0, color: '#FFB347' },
+      { id: 'infinite', text: '无尽模式', x: 0, y: 0, width: 0, height: 0, color: '#a3e1ca' },
     ];
     this.infiniteTooltip = { active: false, timer: 0, alpha: 0 };
 
@@ -688,22 +697,16 @@ export default class Cover {
     const centerY = canvas.height / 2 + 80;
 
     ctx.save();
-    ctx.fillStyle = '#FFB347'; // 主色
-    ctx.strokeStyle = '#322f22';
-    ctx.lineWidth = 6;
-    ctx.font = 'bold 60px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     ctx.translate(centerX, centerY);
     ctx.rotate(-2 * Math.PI / 180);
 
-    // 绘制文字轮廓
-    ctx.strokeText('SKETCHY', 0, -30);
-    ctx.strokeText('TETRIS', 0, 30);
-
-    // 绘制填充文字
-    ctx.fillText('SKETCHY', 0, -30);
-    ctx.fillText('TETRIS', 0, 30);
+    if (this.logoImage && this.logoImage.width > 1) {
+      const maxW = canvas.width * 0.7;
+      const scale = Math.min(1, maxW / this.logoImage.width);
+      const lw = this.logoImage.width * scale;
+      const lh = this.logoImage.height * scale;
+      ctx.drawImage(this.logoImage, -lw / 2, -lh / 2, lw, lh);
+    }
 
     ctx.restore();
   }
@@ -753,7 +756,7 @@ export default class Cover {
     const isUnlocked = this.getPlayerLevel ? this.getPlayerLevel() > 7 : false;
     const infColor = isUnlocked ? infButton.color : '#b2ad9c';
     const infTextColor = isUnlocked ? '#322f22' : '#7b7767';
-    infButton.text = isUnlocked ? 'INFINITE' : '🔒 INFINITE';
+    infButton.text = isUnlocked ? '无尽模式' : '🔒 无尽模式';
     this.drawButton(ctx, infButton, 0, infColor, infTextColor, !isUnlocked);
 
     // 未解锁气泡提示
