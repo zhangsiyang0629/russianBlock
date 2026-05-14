@@ -56,13 +56,13 @@ export class EventScheduler {
 
   onBlockLanded() {
     this.blockCount++;
-    console.log("this.blockCount:", this.blockCount, "this.currentInterval:", this.currentInterval)
+    //console.log("this.blockCount:", this.blockCount, "this.currentInterval:", this.currentInterval)
     if (this.blockCount < this.currentInterval) return null;
 
     this.blockCount = 0;
     this.pickNextInterval();
 
-    console.log("this.config.triggerProbability:", this.config.triggerProbability)
+    //console.log("this.config.triggerProbability:", this.config.triggerProbability)
     if (Math.random() * 100 >= this.config.triggerProbability) return null;
 
     let ids = this.config.eventIds;
@@ -72,6 +72,7 @@ export class EventScheduler {
 
     const triggerProbability = this.config.triggerProbability || EVENT_TRIGGER_PROBABILITY[eventId] || 0;
     if (Math.random() * 100 >= triggerProbability) return null;
+    console.log(`触发事件: ${eventId} (概率: ${triggerProbability}%)`);
     return eventId;
   }
 }

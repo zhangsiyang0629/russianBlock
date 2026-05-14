@@ -161,9 +161,16 @@ async function updatePlayerData(updateFields) {
       
       if (result.data.length > 0) {
         const record = result.data[0];
+        const merged = { ...updateFields };
+        if ('highScore' in merged) {
+          merged.highScore = Math.max(merged.highScore, record.highScore || 0);
+        }
+        if ('level' in merged) {
+          merged.level = Math.max(merged.level, record.level || 1);
+        }
         await db.collection('player_data').doc(record._id).update({
           data: {
-            ...updateFields,
+            ...merged,
             updateTime: db.serverDate()
           }
         });
@@ -179,6 +186,9 @@ async function updatePlayerData(updateFields) {
   }
   // 降级到本地存储
   const localData = getLocalPlayerData();
+  if (updateFields.highScore !== undefined) {
+    updateFields.highScore = Math.max(updateFields.highScore, localData.highScore || 0);
+  }
   Object.assign(localData, updateFields, { updateTime: new Date().toISOString() });
   saveLocalPlayerData(localData);
   return true;
@@ -233,7 +243,10 @@ async function syncRanking(fields = {}) {
         .where({ _openid: openid })
         .get();
       if (existRes.data.length > 0) {
-        await db.collection('rankings').doc(existRes.data[0]._id).update({
+        const exist = existRes.data[0];
+        rankingData.highScore = Math.max(rankingData.highScore, exist.highScore || 0);
+        if (rankingData.level) rankingData.level = Math.max(rankingData.level, exist.level || 1);
+        await db.collection('rankings').doc(exist._id).update({
           data: { ...rankingData, updateTime: db.serverDate() }
         });
       } else {

@@ -317,10 +317,17 @@ export default class TetrisGame {
     if (!getEventHandler(EVENT_INK)) {
       registerEvent(EVENT_INK, () => {
         this.playSfx('audio/ink.mp3');
-        this.inkPhase = 'entering';
-        this.inkTimer = 0;
-        this.inkScale = 0;
-        this.inkAlpha = 1;
+        const startInk = () => {
+          if (!this.inkImage || this.inkImage.width <= 1) return;
+          if (this.inkPhase !== 'idle') return;
+          this.inkPhase = 'entering';
+          this.inkTimer = 0;
+          this.inkScale = 0;
+          this.inkAlpha = 1;
+        };
+        startInk();
+        setTimeout(startInk, 300);
+        setTimeout(startInk, 800);
       });
     }
 
@@ -1802,7 +1809,7 @@ export default class TetrisGame {
     this.renderControlButtons();
 
     // 泼墨效果
-    if (this.inkPhase !== 'idle' && this.inkImage) {
+    if (this.inkPhase !== 'idle' && this.inkImage && this.inkImage.width > 1) {
       const imgAspect = this.inkImage.width / this.inkImage.height;
       let iw, ih;
       const cover = this.inkScale * 1.5;
