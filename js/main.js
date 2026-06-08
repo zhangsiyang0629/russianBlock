@@ -3,7 +3,7 @@ import TetrisGame from './tetris/game';
 import Cover from './cover';
 import EnergyManager from './tetris/energy';
 import RankPanel from './tetris/rank';
-import { getOrCreatePlayerData, updateUserInfo } from './tetris/playerData';
+import { getOrCreatePlayerData, updateUserInfo, saveOnGameOver } from './tetris/playerData';
 import MusicManager from './tetris/music';
 
 const isDebugMode = false
@@ -424,6 +424,11 @@ export default class Main {
       this.handleTouchEnd(touch.clientX, touch.clientY);
     });
     
+    // 生命周期事件：应用切入后台
+    wx.onHide(() => {
+      this.handleAppHide();
+    });
+
     // 键盘事件（游戏控制 + 功能键）
     wx.onKeyDown((res) => {
       if (this.currentState === 'game' && this.game) {
@@ -878,17 +883,31 @@ export default class Main {
     this.startMainLoop();
   }
   
-  /**
-   * 从云数据库同步体力数据
-   */
-  async syncEnergyFromCloud() {
-    try {
-      const playerData = await getOrCreatePlayerData();
-      if (playerData) {
-        this.energyManager.updateFromCloudData(playerData);
+    /**
+     * 从云数据库同步体力数据
+     */
+    async syncEnergyFromCloud() {
+      try {
+        const playerData = await getOrCreatePlayerData();
+        if (playerData) {
+          this.energyManager.updateFromCloudData(playerData);
+        }
+      } catch (err) {
+        console.warn('从云数据库同步体力数据失败:', err);
       }
-    } catch (err) {
-      console.warn('从云数据库同步体力数据失败:', err);
+    }
+
+    /**
+     * 处理应用切入后台事件
+     * 在无尽模式下自动保存当前分数，防止被系统kill时丢失
+     */
+    handleAppHide() {
+      if (this.currentState !== 'game' || !this.game) return;
+      if (this.game.gameMode !== 'infinite') return;
+      if (this.game.gameOver) return;
+      if (this.game.score <= 0) return;
+
+      console.log(`应用切入后台，保存无尽模式分数: ${this.game.score}`);
+      saveOnGameOver(this.game.score, this.game.highScore, this.game.gameMode);
     }
   }
-}

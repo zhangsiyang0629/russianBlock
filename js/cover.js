@@ -41,9 +41,9 @@ export default class Cover {
 
     // 底部导航
     this.navItems = [
-      { id: 'scoresNav', icon: '📊', text: 'Scores', active: true },
-      { id: 'levelsNav', icon: '🎯', text: 'Levels', active: true },
-      { id: 'settingsNav', icon: '⚙', text: 'Settings', active: false }
+      { id: 'scoresNav', icon: '📊', text: '排行', active: true },
+      { id: 'levelsNav', icon: '🎯', text: '关卡', active: true },
+      { id: 'settingsNav', icon: '⚙', text: '设置', active: false }
     ];
 
     // 隐私协议状态
@@ -242,7 +242,7 @@ export default class Cover {
     ctx.font = 'bold 26px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('SETTINGS', cx, dy + 32);
+    ctx.fillText('设置', cx, dy + 32);
 
     const closeSize = 32;
     const closeX = dx + dw - closeSize - 10;
@@ -307,7 +307,7 @@ export default class Cover {
     ctx.font = 'bold 15px Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('♫ MUSIC', sectionX, sectionY + 12);
+    ctx.fillText('♫ 音乐', sectionX, sectionY + 12);
 
     const musicToggleX = sectionX + contentW - toggleW;
     hit.musicToggle = { x: musicToggleX, y: sectionY, w: toggleW, h: 24 };
@@ -323,7 +323,7 @@ export default class Cover {
     ctx.font = 'bold 15px Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🔊 SOUND FX', sectionX, sectionY + 12);
+    ctx.fillText('🔊 音效', sectionX, sectionY + 12);
 
     const sfxToggleX = sectionX + contentW - toggleW;
     hit.sfxToggle = { x: sfxToggleX, y: sectionY, w: toggleW, h: 24 };
@@ -340,7 +340,7 @@ export default class Cover {
     const btnX = (w - btnW) / 2;
     const btnY = sectionY;
     hit.backBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
-    this.drawButton(ctx, { x: btnX, y: btnY, width: btnW, height: btnH, id: 'back', text: 'BACK', color: '#fdd1b4' }, 0, '#fdd1b4', '#4f341f', false);
+    this.drawButton(ctx, { x: btnX, y: btnY, width: btnW, height: btnH, id: 'back', text: '返回', color: '#fdd1b4' }, 0, '#fdd1b4', '#4f341f', false);
 
     ctx.restore();
     this._settingsHitAreas = hit;
@@ -623,38 +623,7 @@ export default class Cover {
       ctx.drawImage(this.characterImage, 10, 10, imgWidth - 20, imgHeight - 20);
       ctx.restore();
 
-      // 绘制对话气泡
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#322f22';
-      ctx.lineWidth = 4;
-      ctx.translate(imgX + imgWidth - 20, imgY - 20);
-      ctx.rotate(12 * Math.PI / 180);
 
-      // 绘制圆角矩形
-      const bubbleWidth = 120;
-      const bubbleHeight = 40;
-      const borderRadius = 10;
-
-      ctx.fillRect(0, 0, bubbleWidth, bubbleHeight);
-      ctx.strokeRect(0, 0, bubbleWidth, bubbleHeight);
-
-      // 绘制对话气泡尾部
-      ctx.beginPath();
-      ctx.moveTo(bubbleWidth - 20, bubbleHeight);
-      ctx.lineTo(bubbleWidth - 10, bubbleHeight + 15);
-      ctx.lineTo(bubbleWidth, bubbleHeight);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // 绘制文字
-      ctx.fillStyle = '#322f22';
-      ctx.font = 'bold 12px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('"CYKA BLOCKS!"', bubbleWidth / 2, bubbleHeight / 2);
-      ctx.restore();
     } else {
       // 图片未加载时绘制占位符
       const placeholderWidth = 200;
@@ -1152,7 +1121,7 @@ export default class Cover {
     ctx.font = 'bold 7px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText('ENERGY', energyWidth / 2, 5);
+    ctx.fillText('体力', energyWidth / 2, 5);
 
     // 体力值（大号显示）
     ctx.fillStyle = energyInfo.hasEnough ? '#993d46' : '#b02500'; // primary or error

@@ -58,7 +58,7 @@ export default class AdManager {
   loadMockAd() {
     // 模拟广告内容（模仿HTML设计）
     this.adContent = {
-      title: 'ADVERTISEMENT SLOT',
+      title: '---',
       bgColor: AD_COLORS.surfaceContainerLow,
       bgOpacity: 0.5,
       borderColor: AD_COLORS.outlineVariant,

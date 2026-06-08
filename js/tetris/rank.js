@@ -417,7 +417,7 @@ export default class RankPanel {
     ctx.textBaseline = 'middle';
     ctx.fillText('←', this.backButton.x + 14, this.backButton.y + 14);
 
-    const title = this.activeTab === 'score' ? 'High Scores' : 'Top Levels';
+    const title = this.activeTab === 'score' ? '最高分' : '最高关卡';
     ctx.fillStyle = '#FFB347';
     ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'center';
@@ -776,7 +776,7 @@ export default class RankPanel {
     ctx.font = 'bold 26px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('SETTINGS', cx, dy + 32);
+    ctx.fillText('设置', cx, dy + 32);
 
     const closeSize = 32;
     const closeX = dx + dw - closeSize - 10;
@@ -841,7 +841,7 @@ export default class RankPanel {
     ctx.font = 'bold 15px Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('♫ MUSIC', sectionX, sectionY + 12);
+    ctx.fillText('♫ 音乐', sectionX, sectionY + 12);
 
     const musicToggleX = sectionX + contentW - toggleW;
     hit.musicToggle = { x: musicToggleX, y: sectionY, w: toggleW, h: 24 };
@@ -857,7 +857,7 @@ export default class RankPanel {
     ctx.font = 'bold 15px Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🔊 SOUND FX', sectionX, sectionY + 12);
+    ctx.fillText('🔊 音效', sectionX, sectionY + 12);
 
     const sfxToggleX = sectionX + contentW - toggleW;
     hit.sfxToggle = { x: sfxToggleX, y: sectionY, w: toggleW, h: 24 };
@@ -1000,9 +1000,9 @@ export default class RankPanel {
     ctx.strokeRect(0, navY, w, BOTTOM_NAV_HEIGHT);
 
     const items = [
-      { icon: '🎮', text: 'Play' },
-      { icon: '🏆', text: 'Scores' },
-      { icon: '⚙', text: 'Settings' },
+      { icon: '🎮', text: '来一局' },
+      { icon: '🏆', text: '排行' },
+      { icon: '⚙', text: '设置' },
     ];
 
     const itemW = w / items.length;

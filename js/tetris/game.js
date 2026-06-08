@@ -458,13 +458,13 @@ export default class TetrisGame {
     const prevSpeed = prevSpeedIdx !== undefined ? SPEED_RATES[prevSpeedIdx] : 1;
     const prevGrid = prevGridSizeIdx !== undefined ? GRID_SIZES[prevGridSizeIdx] : curGrid;
     if (curSpeed > prevSpeed) {
-      this.talkText = 'SPEED UP !!!';
+      this.talkText = '加速啦 !!!';
       this.talkColor = '#FF3333';
     } else if (curGrid.cols > prevGrid.cols || curGrid.rows > prevGrid.rows) {
-      this.talkText = 'BIG BIG !!!';
+      this.talkText = '大大大 !!!';
       this.talkColor = '#FF8800';
     } else {
-      this.talkText = 'GOOD LUCK';
+      this.talkText = '祝你好运 !!!';
       this.talkColor = '#33AA33';
     }
   }
@@ -762,7 +762,7 @@ export default class TetrisGame {
     ctx.font = 'bold 7px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText('SCORE', scoreCardWidth / 2, 5);
+    ctx.fillText('分数', scoreCardWidth / 2, 5);
 
     // 分数数字（缩小比例）
     ctx.fillStyle = COLORS.primary;
@@ -780,7 +780,7 @@ export default class TetrisGame {
     ctx.fillStyle = COLORS.onSurfaceVariant;
     ctx.font = 'bold 5px Arial';
     ctx.textBaseline = 'top';
-    ctx.fillText(this.gameMode === 'infinite' ? 'INFINITE' : `STAGE ${this.level}`, scoreCardWidth / 2, scoreCardHeight - 8);
+    ctx.fillText(this.gameMode === 'infinite' ? '无尽' : `关卡 ${this.level}`, scoreCardWidth / 2, scoreCardHeight - 8);
 
     ctx.restore();
 
@@ -820,7 +820,7 @@ export default class TetrisGame {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     if (this.gameMode === 'infinite') {
-      ctx.fillText(`BEST ${this.highScore}`, scoreCardX + scoreCardWidth / 2, scoreCardY + scoreCardHeight + 5);
+      ctx.fillText(`历史最高 ${this.highScore}`, scoreCardX + scoreCardWidth / 2, scoreCardY + scoreCardHeight + 5);
       this._scoreCenter = { x: scoreCardX + scoreCardWidth / 2, y: scoreCardY + scoreCardHeight / 2 };
     }
     ctx.restore();
@@ -855,11 +855,11 @@ export default class TetrisGame {
     ctx.strokeRect(0, 0, nextCardWidth, nextCardHeight);
 
     // 标题文字（缩小比例）
-    ctx.fillStyle = COLORS.onSurfaceVariant;
-    ctx.font = 'bold 7px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText('NEXT', nextCardWidth / 2, 5);
+    // ctx.fillStyle = COLORS.onSurfaceVariant;
+    // ctx.font = 'bold 7px Arial';
+    // ctx.textAlign = 'center';
+    // ctx.textBaseline = 'top';
+    // ctx.fillText('NEXT', nextCardWidth / 2, 5);
 
     // 渲染下一个方块
     if (this.nextBlock) {
@@ -941,7 +941,7 @@ export default class TetrisGame {
     ctx.font = 'bold 7px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(this.gameMode === 'infinite' ? 'MODE' : 'LEVEL', levelCardWidth / 2, 5);
+    ctx.fillText(this.gameMode === 'infinite' ? '无尽' : '关卡', levelCardWidth / 2, 5);
 
     // 关卡数字（大号显示）
     ctx.fillStyle = COLORS.primary;
@@ -1355,7 +1355,7 @@ export default class TetrisGame {
       this.playSfx('audio/victor.mp3');
       this.showVictoryPopup = true;
       // 随机选择弹窗文案
-      const messages = ['LUCK', 'COOL', 'SO'];
+      const messages = ['运气好', '酷', '一般般'];
       this.victoryMessage = messages[Math.floor(Math.random() * messages.length)];
 
       // 更新最高分
@@ -1573,7 +1573,7 @@ export default class TetrisGame {
             this.winPanelScale = 0.2;
             this.playSfx('audio/victor.mp3');
             this.showVictoryPopup = true;
-            this.victoryMessage = ['LUCK', 'COOL', 'SO'][Math.floor(Math.random() * 3)];
+            this.victoryMessage = ['运气好', '酷', '一般般'][Math.floor(Math.random() * 3)];
             this.victoryEffects.clear();
             const oldGrid = this.gridSizeIndex;
             const oldSpeed = this.speedIndex;
@@ -1916,8 +1916,8 @@ export default class TetrisGame {
       ctx.font = 'bold 44px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.strokeText('SPEED UP !!!', 0, 0);
-      ctx.fillText('SPEED UP !!!', 0, 0);
+      ctx.strokeText('加速啦 !!!', 0, 0);
+      ctx.fillText('加速啦 !!!', 0, 0);
       ctx.restore();
       ctx.globalAlpha = 1;
     }
@@ -2017,7 +2017,7 @@ export default class TetrisGame {
     ctx.font = '13px Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('♫ MUSIC', sectionX, sy + toggleH / 2);
+    ctx.fillText('♫ 音乐', sectionX, sy + toggleH / 2);
     const mtX = sectionX + contentW - toggleW;
     this._pauseMenuButtons.push({ id: 'musicToggle', x: mtX, y: sy, w: toggleW, h: toggleH });
     drawToggle(mtX, sy, this.gameSettings.musicOn, '#993d46');
@@ -2030,7 +2030,7 @@ export default class TetrisGame {
     ctx.font = '13px Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🔊 SOUND FX', sectionX, sy + toggleH / 2);
+    ctx.fillText('🔊 音效', sectionX, sy + toggleH / 2);
     const stX = sectionX + contentW - toggleW;
     this._pauseMenuButtons.push({ id: 'sfxToggle', x: stX, y: sy, w: toggleW, h: toggleH });
     drawToggle(stX, sy, this.gameSettings.sfxOn, '#296654');
@@ -2226,7 +2226,7 @@ export default class TetrisGame {
       ctx.font = 'bold 24px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`LEVEL ${this.level}`, dx + dw / 2, dy + padding + titleH / 2);
+      ctx.fillText(`关卡 ${this.level}`, dx + dw / 2, dy + padding + titleH / 2);
 
       ctx.fillRect(dx + dw / 2 - 25, dy + padding + titleH + 6, 50, 2);
 
