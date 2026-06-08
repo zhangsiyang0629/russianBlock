@@ -296,9 +296,7 @@ export default class TetrisGame {
       img.onload = () => { this.smokeImage = img; };
       img.src = 'subpackages/images/smoke.png';
     }
-    if (!getEventHandler(EVENT_CONFUSION)) {
-      registerEvent(EVENT_CONFUSION, () => { this.nextBlockConfused = true; });
-    }
+    registerEvent(EVENT_CONFUSION, () => { this.nextBlockConfused = true; });
 
     this.inkPhase = 'idle';
     this.inkTimer = 0;
@@ -314,22 +312,20 @@ export default class TetrisGame {
       img.onload = () => {};
       img.src = 'subpackages/images/ink.png';
     }
-    if (!getEventHandler(EVENT_INK)) {
-      registerEvent(EVENT_INK, () => {
-        this.playSfx('audio/ink.mp3');
-        const startInk = () => {
-          if (!this.inkImage || this.inkImage.width <= 1) return;
-          if (this.inkPhase !== 'idle') return;
-          this.inkPhase = 'entering';
-          this.inkTimer = 0;
-          this.inkScale = 0;
-          this.inkAlpha = 1;
-        };
-        startInk();
-        setTimeout(startInk, 300);
-        setTimeout(startInk, 800);
-      });
-    }
+    registerEvent(EVENT_INK, () => {
+      this.playSfx('audio/ink.mp3');
+      const startInk = () => {
+        if (!this.inkImage || this.inkImage.width <= 1) return;
+        if (this.inkPhase !== 'idle') return;
+        this.inkPhase = 'entering';
+        this.inkTimer = 0;
+        this.inkScale = 0;
+        this.inkAlpha = 1;
+      };
+      startInk();
+      setTimeout(startInk, 300);
+      setTimeout(startInk, 800);
+    });
 
     // 炸弹事件
     this.bombPhase = 'idle';
@@ -355,9 +351,7 @@ export default class TetrisGame {
       fall.src = 'subpackages/images/bomb.png';
       this.loadBoomFuseAtlases();
     }
-    if (!getEventHandler(EVENT_BOOM)) {
-      registerEvent(EVENT_BOOM, () => { this.triggerBomb(); });
-    }
+    registerEvent(EVENT_BOOM, () => { this.triggerBomb(); });
 
     // 预绑定游戏循环函数，避免每帧创建新闭包
     this._boundLoop = this.gameLoop.bind(this);
@@ -1279,7 +1273,7 @@ export default class TetrisGame {
           this.winRow = this.findTopBlockRow();
           // console.log(`关卡完成! score=${this.score}, lines=${this.linesCleared}, winRow=${this.winRow}`);
           this.winTimer = 0;
-          this.eventScheduler.reset(this.level);
+    this.eventScheduler.reset(this.gameMode === 'infinite' ? 0 : this.level);
         }
       }
       if (this.gameState === 'playing') {
