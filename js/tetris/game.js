@@ -2084,86 +2084,115 @@ export default class TetrisGame {
     ctx.fillStyle = 'rgba(50, 47, 34, 0.05)';
     ctx.fillRect(0, canvas.height - this.bottomHeight - 4, canvas.width, 4);
 
-    // 按钮参数
-    const buttonCount = this.controlButtons.length;
-    const buttonMargin = 20; // 按钮与边缘的间距
-    const buttonSpacing = 20; // 按钮之间的间距
-    const totalMargin = buttonMargin * 2 + buttonSpacing * (buttonCount - 1);
-    const buttonWidth = Math.min(80, (canvas.width - totalMargin) / buttonCount);
-    const buttonHeight = Math.min(80, this.bottomHeight - 20);
-    const buttonY = canvas.height - this.bottomHeight + (this.bottomHeight - buttonHeight) / 2;
+    // 按钮布局：水平居中
+    // 上一行：[← 下移] [⟳] [→ 下移]  左右大，变换略小
+    // 下一行：    [↓]                  居中圆形
+    const padding = 8;
+    const gap = 8;
 
-    // 计算第一个按钮的X位置（水平居中）
-    const totalWidth = buttonWidth * buttonCount + buttonSpacing * (buttonCount - 1);
-    const startX = (canvas.width - totalWidth) / 2;
+    const areaTop = canvas.height - this.bottomHeight + padding;
+    const areaHeight = this.bottomHeight - padding * 2;
+
+    // 大按钮直径（左右、向下）
+    const bigSize = Math.min(64, Math.floor(areaHeight * 0.44));
+    // 变换按钮约大按钮的 85%
+    const rotateSize = Math.floor(bigSize * 0.85);
+
+    // 按钮簇宽度
+    const clusterWidth = bigSize + gap + rotateSize + gap + bigSize;
+
+    // 水平居中
+    const clusterLeft = Math.floor((canvas.width - clusterWidth) / 2);
+
+    // 整体垂直居中
+    const totalClusterH = bigSize + gap + bigSize;
+    const clusterY = areaTop + Math.floor((areaHeight - totalClusterH) / 2);
+
+    const row1Y = clusterY;
+    const row2Y = clusterY + bigSize + gap;
+
+    // 变换按钮在行内垂直居中
+    const rotateOffset = Math.floor((bigSize - rotateSize) / 2);
+
+    // 左右按钮下移偏移量
+    const sideOffset = Math.floor(bigSize * 0.3);
+
+    // 定位每个按钮
+    for (const button of this.controlButtons) {
+      switch (button.id) {
+        case 'left':
+          button.x = clusterLeft;
+          button.y = row1Y + sideOffset;
+          button.width = bigSize;
+          button.height = bigSize;
+          break;
+        case 'rotate':
+          button.x = clusterLeft + bigSize + gap;
+          button.y = row1Y + rotateOffset;
+          button.width = rotateSize;
+          button.height = rotateSize;
+          break;
+        case 'right':
+          button.x = clusterLeft + bigSize + gap + rotateSize + gap;
+          button.y = row1Y + sideOffset;
+          button.width = bigSize;
+          button.height = bigSize;
+          break;
+        case 'down':
+          const downX = clusterLeft + Math.floor((clusterWidth - bigSize) / 2);
+          button.x = downX;
+          button.y = row2Y;
+          button.width = bigSize;
+          button.height = bigSize;
+          break;
+      }
+    }
 
     // 渲染每个按钮
-    for (let i = 0; i < buttonCount; i++) {
-      const button = this.controlButtons[i];
-      const buttonX = startX + i * (buttonWidth + buttonSpacing);
+    for (const button of this.controlButtons) {
+      const btnX = button.x;
+      const btnY = button.y;
+      const btnW = button.width;
+      const btnH = button.height;
 
-      // 按钮颜色（旋转按钮特殊颜色）
       const isRotateButton = button.id === 'rotate';
       const buttonColor = isRotateButton ? '#FF9500' : COLORS.secondaryContainer;
-      const buttonScale = isRotateButton ? 1.2 : 1.0; // 旋转按钮更大更突出
-      const scaledWidth = buttonWidth * buttonScale;
-      const scaledHeight = buttonHeight * buttonScale;
-      const scaledX = buttonX - (scaledWidth - buttonWidth) / 2;
-      const scaledY = buttonY - (scaledHeight - buttonHeight) / 2;
 
-      // 更新按钮位置（用于点击检测）- 使用缩放后的坐标和尺寸
-      button.x = scaledX;
-      button.y = scaledY;
-      button.width = scaledWidth;
-      button.height = scaledHeight;
-
-      // 绘制阴影（使用Canvas阴影属性实现模糊效果）
+      // 绘制阴影
       ctx.save();
       const shadowColor = isRotateButton ? 'rgba(50, 47, 34, 0.7)' : EFFECTS.shadowColor;
-      const shadowOffset = isRotateButton ? 18 : EFFECTS.shadowOffset;
-      const shadowBlur = isRotateButton ? 22 : EFFECTS.shadowBlur;
+      const shadowOffset = isRotateButton ? 14 : EFFECTS.shadowOffset;
+      const shadowBlur = isRotateButton ? 18 : EFFECTS.shadowBlur;
       ctx.shadowColor = shadowColor;
       ctx.shadowOffsetX = shadowOffset;
       ctx.shadowOffsetY = shadowOffset;
       ctx.shadowBlur = shadowBlur;
       ctx.fillStyle = shadowColor;
-      drawRoundedRect(ctx, scaledX, scaledY, scaledWidth, scaledHeight, scaledWidth / 2);
+      drawRoundedRect(ctx, btnX, btnY, btnW, btnH, btnW / 2);
       ctx.fill();
       ctx.restore();
 
-      // 绘制按钮背景（圆形）
+      // 绘制按钮背景
       ctx.fillStyle = buttonColor;
-      drawRoundedRect(ctx, scaledX, scaledY, scaledWidth, scaledHeight, scaledWidth / 2);
+      drawRoundedRect(ctx, btnX, btnY, btnW, btnH, btnW / 2);
       ctx.fill();
 
       // 绘制按钮边框
       ctx.strokeStyle = COLORS.onBackground;
       ctx.lineWidth = 4;
-      drawRoundedRect(ctx, scaledX, scaledY, scaledWidth, scaledHeight, scaledWidth / 2);
+      drawRoundedRect(ctx, btnX, btnY, btnW, btnH, btnW / 2);
       ctx.stroke();
 
-      // 绘制按钮图标（更粗的图标）
+      // 绘制按钮图标
       const fontCoff = isRotateButton ? 0.9 : 0.45;
-      ctx.font = `bold ${Math.floor(scaledWidth * fontCoff)}px Arial`;
+      ctx.font = `bold ${Math.floor(btnW * fontCoff)}px Arial`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      // 绘制图标描边（加粗效果）
       ctx.strokeStyle = COLORS.onSecondaryContainer;
       ctx.lineWidth = 3;
-      ctx.strokeText(
-        button.icon,
-        scaledX + scaledWidth / 2,
-        scaledY + scaledHeight / 2
-      );
-      // 绘制图标填充
+      ctx.strokeText(button.icon, btnX + btnW / 2, btnY + btnH / 2);
       ctx.fillStyle = COLORS.onSecondaryContainer;
-      ctx.fillText(
-        button.icon,
-        scaledX + scaledWidth / 2,
-        scaledY + scaledHeight / 2
-      );
-
-      // 移除按钮描述（小字）
+      ctx.fillText(button.icon, btnX + btnW / 2, btnY + btnH / 2);
     }
   }
 
