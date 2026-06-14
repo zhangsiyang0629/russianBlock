@@ -460,33 +460,18 @@ export default class Grid {
     const blockX = x * cell;
     const blockY = y * cell;
 
-    ctx.save();
-
-    const time = Date.now() * 0.001;
-    const phaseHash = (x * 13 + y * 17) * 0.1;
-
-    const rotation = Math.sin(time * 30 + phaseHash) * 0.5 * (Math.PI / 180);
-    const translateX = Math.sin(time * 40 + phaseHash * 1.3) * 0.5;
-    const translateY = Math.cos(time * 35 + phaseHash * 1.7) * 0.5;
-
-    ctx.translate(blockX + cell / 2, blockY + cell / 2);
-    ctx.rotate(rotation);
-    ctx.translate(-cell / 2 + translateX, -cell / 2 + translateY);
-
     ctx.fillStyle = colors[color];
-    ctx.fillRect(0, 0, cell, cell);
+    ctx.fillRect(blockX, blockY, cell, cell);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
     const patternSize = 4;
     for (let i = -patternSize; i < cell + patternSize; i += patternSize * 2) {
-      ctx.fillRect(i, 0, patternSize, cell);
+      ctx.fillRect(blockX + i, blockY, patternSize, cell);
     }
 
     ctx.strokeStyle = GRID_COLORS.onBackground;
     ctx.lineWidth = 3;
-    ctx.strokeRect(0, 0, cell, cell);
-
-    ctx.restore();
+    ctx.strokeRect(blockX, blockY, cell, cell);
   }
 
   drawAnimatedBlock(ctx, x, y, color, progress) {
