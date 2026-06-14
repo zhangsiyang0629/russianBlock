@@ -43,6 +43,7 @@ export default class Cover {
     this.navItems = [
       { id: 'scoresNav', icon: '📊', text: '排行', active: true },
       { id: 'levelsNav', icon: '🎯', text: '关卡', active: true },
+      { id: 'clubNav', icon: '🎮', text: '游戏圈', active: true },
       { id: 'settingsNav', icon: '⚙', text: '设置', active: false }
     ];
 

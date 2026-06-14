@@ -389,6 +389,41 @@ export default class Main {
     }));
   }
 
+  /**
+   * 打开游戏圈
+   * openlink 从 MP 后台-游戏圈-基础设置 获取
+   */
+  openGameClub() {
+    if (typeof wx === 'undefined' || !wx.createPageManager) {
+      console.warn('wx.createPageManager not available');
+      return;
+    }
+    // 替换为你的游戏圈 openlink（MP 后台-游戏圈-基础设置）
+    const openlink = '-SSEykJvFV3pORt5kTNpS74EpnWGkoF38TvG3-HF7YtuRSJMMScr_H9Ce9dQ9L_hZoWm8iMN3q-n8GWrecVvzDWDBlEBPLRcCU4ynN0Vc1wV5KCnwilLHeUA-vH8vIxOj2AHkgdibM7xjooTj3V0AoxA7Nzg9JG3x9ZX0yPSBggEQVUteUCNlQzSxVdJ8sa9e003G9WRt25QaTr0tudVj1O5GudzQQ2mIYKl1qV2ud0wrATNZ-ahB1AGMJnO8hbJFABLs0K_1jz02MzPOay1_HbK821hsl3ur3rX4Axmlhddmf0R0GtV7ofgEIHGSE7t6hYA-dbGEkYv-7euLTsrzA';
+    if (!openlink) {
+      console.warn('请先在 MP 后台-游戏圈-基础设置 获取 openlink');
+      if (wx.showToast) {
+        wx.showToast({ title: '游戏圈尚未配置', icon: 'none' });
+      }
+      return;
+    }
+
+    const pageManager = wx.createPageManager();
+    pageManager.load({
+      openlink: openlink, // 由不同渠道获得的OPENLINK值
+    }).then((res) => {
+      // 加载成功，res 可能携带不同活动、功能返回的特殊回包信息（具体请参阅渠道说明）
+      console.log(res);
+    
+      // 加载成功后按需显示
+      pageManager.show();
+    
+    }).catch((err) => {
+      // 加载失败，请查阅 err 给出的错误信息
+      console.error(err);
+    })
+  }
+
   handleTouchStart(x, y) {
     if (this.currentState === 'rank' && this.rankPanel) {
       this.rankPanel.handleTouchStart(x, y);
@@ -423,6 +458,8 @@ export default class Main {
       if (this.cover) {
         this.cover.showSettings();
       }
+    } else if (clickedId === 'clubNav') {
+      this.openGameClub();
     } else if (clickedId === 'shareEnergy') {
       if (typeof wx !== 'undefined' && wx.showModal) {
         wx.showModal({
@@ -492,6 +529,8 @@ export default class Main {
         if (this.cover) {
           this.cover.showSettings();
         }
+      } else if (clickedId === 'clubNav') {
+        this.openGameClub();
       }
     } else if (this.currentState === 'game' && this.game) {
       this.game.handleTouch(x, y);

@@ -72,7 +72,7 @@ const GRID_SIZES = [
 ];
 
 // 下落速度倍率档位配置 (j=1-4)
-const SPEED_RATES = [1.0, 1.1, 1.15, 1.2]; // j=1-4
+const SPEED_RATES = [1.0, 1.3, 1.8, 2.5]; // j=1-4
 
 // 基础下落速度（毫秒/格）
 const BASE_DROP_INTERVAL = 1000; // 1秒/格
@@ -100,30 +100,30 @@ const LEVEL_CONFIG = {
 // 分数配置（便于调试与调整）
 const SCORE_CONFIG = {
   lineClearPoints: [0, 10, 25, 50, 80],
-  levelUpThreshold: 150,
+  levelUpThreshold: 100,
 };
 
 // 关卡通关分数配置，未配置的关卡默认 levelUpThreshold
 const LEVEL_UP_SCORES = {
-  1: 100,
-  2: 100,
-  3: 100,
-  4: 100,
-  5: 100,
-  6: 100,
-  7: 100,
-  8: 90,
+  1: 70,
+  2: 70,
+  3: 70,
+  4: 70,
+  5: 70,
+  6: 70,
+  7: 70,
+  8: 80,
 };
 
 // 无尽模式速度配置
 const INFINITE_SPEED_LEVELS = [
   { score: 0, speed: 1.0 },
-  { score: 300, speed: 1.1 },
-  { score: 800, speed: 1.2 },
-  { score: 1500, speed: 1.3 },
-  { score: 2500, speed: 1.4 },
-  { score: 4000, speed: 1.5 },
-  { score: 6000, speed: 1.6 },
+  { score: 300, speed: 1.3 },
+  { score: 800, speed: 1.8 },
+  { score: 1500, speed: 2.5 },
+  { score: 2500, speed: 3.0 },
+  { score: 4000, speed: 3.0 },
+  { score: 6000, speed: 3.0 },
 ];
 
 // 设计效果
@@ -342,6 +342,7 @@ export default class TetrisGame {
     this.bombDebris = [];
     this._bombFuseLoaded = false;
     this._bombBlasted = false;
+    this._shakeRestore = false;
     if (typeof wx !== 'undefined' && wx.createImage) {
       const img = wx.createImage();
       img.onload = () => { this.boomImage = img; };
@@ -1648,6 +1649,18 @@ export default class TetrisGame {
     ctx.fillStyle = COLORS.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // 炸弹爆炸全屏震动
+    let shakeX = 0, shakeY = 0;
+    if (this.bombPhase === 'shake' || this.bombPhase === 'fade') {
+      shakeX = this.bombShakeOffX;
+      shakeY = this.bombShakeOffY;
+    }
+    if (shakeX || shakeY) {
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
+      this._shakeRestore = true;
+    }
+
     // 渲染广告区域
     this.adManager.render(ctx);
 
@@ -1762,8 +1775,7 @@ export default class TetrisGame {
         const alpha = this.bombPhase === 'fade' ? Math.max(0, 1 - this.bombTimer / 1000) : 1;
         ctx.globalAlpha = alpha;
         ctx.drawImage(this.boomImage, 0, 0, this.boomImage.width, this.boomImage.height,
-          bx + (bw - boomSize) / 2 + this.bombShakeOffX,
-          by + (bh - boomSize) / 2 + this.bombShakeOffY,
+          bx + (bw - boomSize) / 2, by + (bh - boomSize) / 2,
           boomSize, boomSize);
         ctx.globalAlpha = 1;
       }
@@ -1914,6 +1926,11 @@ export default class TetrisGame {
       ctx.fillText('加速啦 !!!', 0, 0);
       ctx.restore();
       ctx.globalAlpha = 1;
+    }
+
+    if (this._shakeRestore) {
+      ctx.restore();
+      this._shakeRestore = false;
     }
   }
 
