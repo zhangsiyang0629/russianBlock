@@ -21,11 +21,13 @@ export default class AdManager {
       console.warn('AdManager: 获取窗口信息失败，使用默认值:', error);
       // 默认值，大部分手机屏幕尺寸
       windowInfo = {
-        screenHeight: 667
+        screenHeight: 667,
+        windowWidth: 390
       };
     }
     this.screenHeight = windowInfo.screenHeight;
-    this.adHeight = Math.floor(this.screenHeight / 9); // 广告区域高度为屏幕高度的1/9
+    this.screenWidth = windowInfo.windowWidth || 390;
+    this.adHeight = Math.max(110, Math.floor(this.screenWidth / 4));
     this.adVisible = true; // 广告是否可见
     this.adContent = null; // 广告内容
     this.adType = 'banner'; // 广告类型：banner、interstitial等
@@ -33,8 +35,12 @@ export default class AdManager {
     this.adUpdateInterval = 30000; // 广告更新间隔（毫秒）
     
     // 激励视频广告相关
-    this.rewardedAd = null; // 激励视频广告实例
-    this.rewardCallback = null; // 奖励回调
+    this.rewardedAd = null;
+    this.rewardCallback = null;
+
+    // 插屏广告
+    this.interstitialAd = null;
+    this._rewardedAdInited = false;
     
     // 初始化广告
     this.initAd();
@@ -44,12 +50,34 @@ export default class AdManager {
    * 初始化广告
    */
   initAd() {
-    // 这里可以初始化微信广告
-    // 暂时使用模拟广告
-    this.loadMockAd();
-    
-    // 初始化激励视频广告（模拟）
-    this.initRewardedAd();
+    this.adVisible = true;
+    this.loadWeChatAd();
+    setTimeout(() => this.initRewardedAd(), 2000);
+    this.initInterstitialAd();
+  }
+
+  /**
+   * 初始化插屏广告
+   */
+  initInterstitialAd() {
+    if (wx.createInterstitialAd) {
+      this.interstitialAd = wx.createInterstitialAd({
+        adUnitId: 'adunit-8d43aaa0d812760a'
+      });
+      this.interstitialAd.onError(() => {});
+      this.interstitialAd.onClose(() => {});
+    }
+  }
+
+  /**
+   * 显示插屏广告
+   */
+  showInterstitialAd() {
+    if (this.interstitialAd) {
+      this.interstitialAd.show().catch(() => {
+        this.interstitialAd.load().then(() => this.interstitialAd.show()).catch(() => {});
+      });
+    }
   }
 
   /**
@@ -73,64 +101,69 @@ export default class AdManager {
    * 加载微信banner广告
    */
   loadWeChatAd() {
-    // 实际微信小游戏广告代码
-    // if (wx.createBannerAd) {
-    //   this.bannerAd = wx.createBannerAd({
-    //     adUnitId: 'your-ad-unit-id',
-    //     style: {
-    //       left: 0,
-    //       top: 0,
-    //       width: 320,
-    //       height: this.adHeight
-    //     }
-    //   });
-    //   
-    //   this.bannerAd.onLoad(() => {
-    //     console.log('广告加载成功');
-    //   });
-    //   
-    //   this.bannerAd.onError((err) => {
-    //     console.log('广告加载失败', err);
-    //   });
-    //   
-    //   this.bannerAd.show();
-    // }
+    if (wx.createBannerAd) {
+      const adWidth = 320;
+      const left = Math.floor((this.screenWidth - adWidth) / 2);
+      this.bannerAd = wx.createBannerAd({
+        adUnitId: 'adunit-80a697bdd3d4c61b',
+        style: {
+          left,
+          top: 0,
+          width: adWidth,
+          height: this.adHeight
+        }
+      });
+      
+      this.bannerAd.onLoad(() => {
+        console.log('banner广告加载成功');
+        this.adVisible = true;
+      });
+      
+      this.bannerAd.onError((err) => {
+        console.log('banner广告加载失败', err);
+      });
+      
+      this.bannerAd.show();
+    }
   }
 
   /**
-   * 初始化激励视频广告（模拟）
+   * 初始化激励视频广告
    */
   initRewardedAd() {
-    // 模拟激励视频广告初始化
-    console.log('激励视频广告初始化（模拟）');
+    console.log('激励视频广告初始化');
     
-    // 实际微信激励视频广告代码
-    // if (wx.createRewardedVideoAd) {
-    //   this.rewardedAd = wx.createRewardedVideoAd({
-    //     adUnitId: 'your-rewarded-video-ad-unit-id'
-    //   });
-    //   
-    //   this.rewardedAd.onLoad(() => {
-    //     console.log('激励视频广告加载成功');
-    //   });
-    //   
-    //   this.rewardedAd.onError((err) => {
-    //     console.log('激励视频广告加载失败', err);
-    //   });
-    //   
-    //   this.rewardedAd.onClose((res) => {
-    //     if (res && res.isEnded) {
-    //       // 正常播放结束，发放奖励
-    //       if (this.rewardCallback) {
-    //         this.rewardCallback();
-    //         this.rewardCallback = null;
-    //       }
-    //     } else {
-    //       // 未播放完整，不发奖励
-    //       console.log('广告未播放完整，不发奖励');
-    //     }
-    //   });
-    // }
+    if (wx.createRewardedVideoAd) {
+      this.rewardedAd = wx.createRewardedVideoAd({
+        adUnitId: 'adunit-b4b319bc9a99d6a7'
+      });
+      
+      if (!this._rewardedAdInited) {
+        this._rewardedAdInited = true;
+        this.rewardedAd.onLoad(() => {
+          console.log('激励视频广告加载成功');
+        });
+        
+        this.rewardedAd.onError((err) => {
+          console.log('激励视频广告加载失败', JSON.stringify(err));
+        });
+        
+        this.rewardedAd.onClose((res) => {
+          console.log('激励视频广告关闭, res:', JSON.stringify(res));
+          if (res && res.isEnded) {
+            console.log('广告播放完整，发放奖励');
+            if (this.rewardCallback) {
+              this.rewardCallback();
+              this.rewardCallback = null;
+            }
+          } else {
+            console.log('广告未播放完整，不发奖励');
+          }
+        });
+      }
+    } else {
+      console.log('wx.createRewardedVideoAd 不可用');
+    }
   }
 
   /**
@@ -139,49 +172,35 @@ export default class AdManager {
    * @param {Function} onError - 广告观看失败回调
    */
   showRewardedAd(onSuccess, onError) {
-    console.log('显示激励视频广告（模拟）');
+    console.log('显示激励视频广告');
     
-    // 模拟广告显示
-    if (Math.random() > 0.1) { // 90% 成功率
-      console.log('模拟广告观看成功，3秒后发放奖励...');
-      
-      // 模拟广告观看时间
-      setTimeout(() => {
-        console.log('奖励发放成功');
-        if (onSuccess) onSuccess();
-      }, 3000);
+    if (this.rewardedAd) {
+      this.rewardCallback = onSuccess;
+      this.rewardedAd.show().then(() => {
+        console.log('激励视频广告 show 成功');
+      }).catch((err) => {
+        console.log('激励视频广告 show 失败，尝试重载:', JSON.stringify(err));
+        this.rewardedAd.load()
+          .then(() => {
+            console.log('激励视频广告重载成功，再次 show');
+            return this.rewardedAd.show();
+          })
+          .catch(err2 => {
+            console.log('激励视频广告重载后仍失败:', JSON.stringify(err2));
+            this.rewardCallback = null;
+            if (onError) onError(err2);
+          });
+      });
     } else {
-      console.log('模拟广告加载失败');
-      if (onError) onError('广告加载失败');
+      console.log('激励视频广告未初始化');
+      if (onError) onError('广告未初始化');
     }
-    
-    // 实际微信激励视频广告代码
-    // if (this.rewardedAd) {
-    //   this.rewardCallback = onSuccess;
-    //   this.rewardedAd.show().catch(() => {
-    //     // 失败重试
-    //     this.rewardedAd.load()
-    //       .then(() => this.rewardedAd.show())
-    //       .catch(err => {
-    //         console.log('激励视频广告显示失败', err);
-    //         if (onError) onError(err);
-    //       });
-    //   });
-    // } else {
-    //   console.log('激励视频广告未初始化');
-    //   if (onError) onError('广告未初始化');
-    // }
   }
 
   /**
    * 更新广告内容
    */
   update(currentTime) {
-    // 定时更新广告内容
-    if (currentTime - this.lastAdUpdate > this.adUpdateInterval) {
-      this.loadMockAd();
-      this.lastAdUpdate = currentTime;
-    }
   }
 
   /**
@@ -205,46 +224,7 @@ export default class AdManager {
    * 渲染广告区域
    */
   render(ctx) {
-    if (!this.adVisible) return;
-
-    const canvas = ctx.canvas;
-    const width = canvas.width;
-    const height = this.adHeight;
-    const borderRadius = 12; // 圆角大小
-    
-    // 绘制半透明背景（带圆角）
-    ctx.fillStyle = this.adContent.bgColor || AD_COLORS.surfaceContainerLow;
-    ctx.globalAlpha = this.adContent.bgOpacity || 0.5;
-    this.drawRoundedRect(ctx, 0, 0, width, height, borderRadius);
-    ctx.fill();
-    ctx.globalAlpha = 1.0;
-    
-    // 绘制虚线边框
-    ctx.strokeStyle = this.adContent.borderColor || AD_COLORS.outlineVariant;
-    ctx.lineWidth = 4;
-    ctx.setLineDash([8, 4]); // 虚线模式
-    this.drawRoundedRect(ctx, 0, 0, width, height, borderRadius);
-    ctx.stroke();
-    ctx.setLineDash([]); // 恢复实线
-    
-    // 绘制广告文字
-    ctx.fillStyle = this.adContent.textColor || AD_COLORS.onSurfaceVariant;
-    ctx.font = `${this.adContent.fontWeight || 'bold'} ${this.adContent.fontSize || 12}px ${this.adContent.fontFamily || 'Plus Jakarta Sans, Arial'}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    const centerX = width / 2;
-    const centerY = height / 2;
-    
-    // 直接使用大写文本
-    ctx.fillText((this.adContent.title || 'ADVERTISEMENT SLOT').toUpperCase(), centerX, centerY);
-    
-    // 绘制"广告"标识（左下角）
-    ctx.fillStyle = 'rgba(50, 47, 34, 0.3)'; // onSurface带透明度
-    ctx.font = '10px Arial';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('广告', 8, height - 4);
+    // banner 广告由微信原生渲染，canvas 不需要绘制
   }
 
   /**
@@ -297,10 +277,18 @@ export default class AdManager {
    * 销毁广告资源
    */
   destroy() {
-    // 销毁微信广告
-    // if (this.bannerAd) {
-    //   this.bannerAd.destroy();
-    //   this.bannerAd = null;
-    // }
+    if (this.bannerAd) {
+      this.bannerAd.destroy();
+      this.bannerAd = null;
+    }
+    if (this.rewardedAd) {
+      this.rewardedAd.destroy();
+      this.rewardedAd = null;
+    }
+    if (this.interstitialAd) {
+      this.interstitialAd.destroy();
+      this.interstitialAd = null;
+    }
+    this.rewardCallback = null;
   }
 }

@@ -2,6 +2,17 @@
   "deviceOrientation": "portrait",
   "renderMode": "separatedContext",
   "AndroidAdaptation": true,
+  "plugins": {
+    "MiniGameCommon": {
+      "version": "latest",
+      "provider": "wxaed5ace05d92b218",
+      "contexts": [
+        {
+          "type": "isolatedContext"
+        }
+      ]
+    }
+  },
   "subpackages": [
     {
       "name": "animation",

@@ -225,11 +225,15 @@ export default class Main {
          // 用户点击了隐私保护政策链接
          this.openPrivacyContract('privacy');
          break;
-       case 'getAgreedStatus':
-         // 封面请求获取当前同意状态
-         return this.privacyAgreed;
+      case 'getAgreedStatus':
+        // 封面请求获取当前同意状态
+        return this.privacyAgreed;
 
-       default:
+      case 'recommend':
+        this.recommendGame();
+        break;
+
+      default:
          console.warn('未知的隐私协议操作:', action);
      }
     }
@@ -422,6 +426,31 @@ export default class Main {
       // 加载失败，请查阅 err 给出的错误信息
       console.error(err);
     })
+  }
+
+  /**
+   * 推荐游戏到朋友圈/游戏中心
+   * openlink 从 MP 后台-游戏能力地图-游戏圈-基础设置-游戏内推荐模块 获取
+   */
+  recommendGame() {
+    if (typeof wx === 'undefined' || !wx.createPageManager) return;
+    const version = wx.getAppBaseInfo().SDKVersion;
+    const parts = version.split('.').map(Number);
+    if (parts[0] < 3 || (parts[0] === 3 && parts[1] < 7) || (parts[0] === 3 && parts[1] === 7 && parts[2] < 6)) {
+      console.warn('基础库版本过低，需要 3.7.6+');
+      if (wx.showToast) wx.showToast({ title: '请更新微信版本', icon: 'none' });
+      return;
+    }
+    // 替换为你的推荐 openlink（MP 后台-游戏内推荐模块）
+    const openlink = 'FM09ILkjlQxM0OIigsWiuGIdFe7FV0HoNKXS8V9PYREcSfhUsZYMCYqWSak_iwcDEWY0qzEyXEIdvzOvvUZyF3C4ZDqZf5L68u1JhGkP6unrbECtCJY3MyJnnaSPozXwlw9fX9lz9X_myreTQ0wAvvwwVVz5O9F7a4YULWo9q2hle8XKCR8XjNmJFAjSBf4JCL1GP2OyUG1lvuy21TTDQ6S_JH8vdx0rdTPqWT10Eb0OynDKb1tR9V7sEQXlpio2kbYuyX31vA99iO9LIUq_t6aKZPMfYqOXiTzw2Vxcdwiu_bhtaNvFAizT1nfyj1ZzwbDA4JlBqYmWE1bx2kpmk6gEdxHl3jSxJUtMw2f-LSVhaG2YYJwPsgPkTQ-jHaHGFyf9XHOz0nAi3OAxec-DHA';
+    if (!openlink) {
+      if (wx.showToast) wx.showToast({ title: '推荐尚未配置', icon: 'none' });
+      return;
+    }
+    const pm = wx.createPageManager();
+    pm.load({ openlink }).then(() => pm.show()).catch((err) => {
+      console.error('推荐打开失败:', err);
+    });
   }
 
   handleTouchStart(x, y) {

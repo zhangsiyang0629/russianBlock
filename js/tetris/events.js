@@ -8,6 +8,10 @@ export function registerEvent(eventId, handler) {
   registry.set(eventId, handler);
 }
 
+export function unregisterEvent(eventId) {
+  registry.delete(eventId);
+}
+
 export function getEventHandler(eventId) {
   return registry.get(eventId);
 }
