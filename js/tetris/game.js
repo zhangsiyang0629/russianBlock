@@ -1680,7 +1680,7 @@ export default class TetrisGame {
     const currentAdHeight = this.adManager.getAdHeight();
 
     // 计算安全边界
-    const topBoundary = currentAdHeight + 20;
+    const topBoundary = currentAdHeight + 30;
     const bottomBoundary = canvas.height - this.bottomHeight - 10;
     const availableSpace = bottomBoundary - topBoundary;
 

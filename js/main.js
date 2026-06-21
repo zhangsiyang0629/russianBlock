@@ -346,39 +346,43 @@ export default class Main {
     */
   bindEvents() {
     // 触摸事件
+    wx.offTouchStart();
     wx.onTouchStart((e) => {
       if (!e || !e.touches || !e.touches[0]) return;
       const touch = e.touches[0];
       this.handleTouchStart(touch.clientX, touch.clientY);
     });
     
+    wx.offTouchMove();
     wx.onTouchMove((e) => {
       if (!e || !e.touches || !e.touches[0]) return;
       const touch = e.touches[0];
       this.handleTouchMove(touch.clientX, touch.clientY);
     });
     
+    wx.offTouchEnd();
     wx.onTouchEnd((e) => {
       if (!e || !e.changedTouches || !e.changedTouches[0]) return;
       const touch = e.changedTouches[0];
       this.handleTouchEnd(touch.clientX, touch.clientY);
     });
     
-    // 生命周期事件：应用切入后台
+    wx.offHide();
     wx.onHide(() => {
       this.handleAppHide();
     });
 
-    // 键盘事件（游戏控制 + 功能键）
+    wx.offKeyDown();
     wx.onKeyDown((res) => {
       if (this.currentState === 'game' && this.game) {
         this.game.keys[res.keyCode] = true;
-        if (res.keyCode === 82) { // R键
+        if (res.keyCode === 82) {
           this.game.restart();
         }
       }
     });
 
+    wx.offKeyUp();
     wx.onKeyUp((res) => {
       if (this.currentState === 'game' && this.game) {
         this.game.keys[res.keyCode] = false;
@@ -388,6 +392,7 @@ export default class Main {
 
   setupShareMessage() {
     if (typeof wx === 'undefined' || !wx.onShareAppMessage) return;
+    wx.offShareAppMessage();
     wx.onShareAppMessage(() => ({
       title: '一款好玩的俄罗斯方块小游戏，快来挑战！',
     }));

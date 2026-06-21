@@ -29,7 +29,7 @@ export default class Cover {
     if (typeof wx !== 'undefined' && wx.createImage) {
       const img = wx.createImage();
       this.logoImage = img;
-      img.onload = () => {};
+      img.onload = () => { };
       img.src = 'subpackages/images/logoWord.png';
     }
 
@@ -37,7 +37,7 @@ export default class Cover {
     if (typeof wx !== 'undefined' && wx.createImage) {
       const img = wx.createImage();
       this.recommendIcon = img;
-      img.onload = () => {};
+      img.onload = () => { };
       img.src = 'subpackages/images/game_comm.png';
     }
 
@@ -106,7 +106,7 @@ export default class Cover {
       const sh = windowInfo.windowHeight || Math.floor((windowInfo.screenHeight || 844) / 3);
       const adW = 60;
       const adH = 120;
-      const titleCenterY = Math.floor(sh / 2 + 80);
+      const titleCenterY = Math.floor(sh / 3);
       this.gridAd = wx.createCustomAd({
         adUnitId: 'adunit-25a756ef90a916ed',
         style: {
@@ -116,7 +116,7 @@ export default class Cover {
           height: adH,
         }
       });
-      this.gridAd.onError(() => {});
+      this.gridAd.onError(() => { });
       this.gridAd.show();
     }
 
@@ -1263,7 +1263,7 @@ export default class Cover {
   /**
    * 隐藏封面
    */
-   hide(stopBgm = false) {
+  hide(stopBgm = false) {
     this.active = false;
     this.effects.clear();
     this.bgmPendingPlay = false;

@@ -7,6 +7,10 @@ const AD_COLORS = {
   white: '#ffffff',
 };
 
+// 模块级标志，确保微信广告对象的监听器只注册一次
+let _rewardedAdListenersInited = false;
+let _interstitialAdListenersInited = false;
+
 /**
  * 广告管理器
  * 管理游戏顶部广告区域
@@ -40,7 +44,6 @@ export default class AdManager {
 
     // 插屏广告
     this.interstitialAd = null;
-    this._rewardedAdInited = false;
     
     // 初始化广告
     this.initAd();
@@ -64,8 +67,11 @@ export default class AdManager {
       this.interstitialAd = wx.createInterstitialAd({
         adUnitId: 'adunit-8d43aaa0d812760a'
       });
-      this.interstitialAd.onError(() => {});
-      this.interstitialAd.onClose(() => {});
+      if (!_interstitialAdListenersInited) {
+        _interstitialAdListenersInited = true;
+        this.interstitialAd.onError(() => {});
+        this.interstitialAd.onClose(() => {});
+      }
     }
   }
 
@@ -101,10 +107,19 @@ export default class AdManager {
    * 加载微信banner广告
    */
   loadWeChatAd() {
-    if (wx.createBannerAd) {
-      const adWidth = 320;
-      const left = Math.floor((this.screenWidth - adWidth) / 2);
-      this.bannerAd = wx.createBannerAd({
+    if (wx.createCustomAd) {
+      let menuBtnLeft = this.screenWidth - 44;
+      if (typeof wx.getMenuButtonBoundingClientRect === 'function') {
+        try {
+          const menuBtn = wx.getMenuButtonBoundingClientRect();
+          if (menuBtn && menuBtn.left > 0) {
+            menuBtnLeft = menuBtn.left;
+          }
+        } catch (e) {}
+      }
+      const adWidth = Math.max(200, menuBtnLeft - 30);
+      const left = 10;
+      this.bannerAd = wx.createCustomAd({
         adUnitId: 'adunit-80a697bdd3d4c61b',
         style: {
           left,
@@ -120,7 +135,7 @@ export default class AdManager {
       });
       
       this.bannerAd.onError((err) => {
-        console.log('banner广告加载失败', err);
+        console.log('banner广告加载失败', JSON.stringify(err));
       });
       
       this.bannerAd.show();
@@ -138,8 +153,8 @@ export default class AdManager {
         adUnitId: 'adunit-b4b319bc9a99d6a7'
       });
       
-      if (!this._rewardedAdInited) {
-        this._rewardedAdInited = true;
+      if (!_rewardedAdListenersInited) {
+        _rewardedAdListenersInited = true;
         this.rewardedAd.onLoad(() => {
           console.log('激励视频广告加载成功');
         });
