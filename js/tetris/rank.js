@@ -139,6 +139,7 @@ export default class RankPanel {
     this.scrollOffset = 0;
     this.avatarImages = {};
     this._shareImgLoaded = false;
+    this._clubImgLoaded = false;
 
     // 加载分享图标
     this._loadShareImage();
@@ -148,10 +149,16 @@ export default class RankPanel {
 
   _loadShareImage() {
     if (typeof wx === 'undefined' || !wx.createImage) return;
+    if (this._shareImgLoaded) return;
     this._shareImg = wx.createImage();
     this._shareImg.onload = () => { this._shareImgLoaded = true; };
     this._shareImg.onerror = () => {};
     this._shareImg.src = 'subpackages/images/share.png';
+
+    this._clubImg = wx.createImage();
+    this._clubImg.onload = () => { this._clubImgLoaded = true; };
+    this._clubImg.onerror = () => {};
+    this._clubImg.src = 'subpackages/images/game_comm.png';
   }
 
   hide() {
@@ -294,7 +301,7 @@ export default class RankPanel {
       }
     }
 
-    // 分享按钮（底部）
+    // 分享按钮
     if (this.shareBtn && x >= this.shareBtn.x && x <= this.shareBtn.x + this.shareBtn.w && y >= this.shareBtn.y && y <= this.shareBtn.y + this.shareBtn.h) {
       const tabLabel = this.activeTab === 'score' ? '分数榜' : '关卡榜';
       const myItem = this.findMyItem();
@@ -303,6 +310,12 @@ export default class RankPanel {
       if (typeof wx !== 'undefined' && wx.shareAppMessage) {
         wx.shareAppMessage({ title });
       }
+      return true;
+    }
+
+    // 游戏圈分享按钮
+    if (this.clubBtn && x >= this.clubBtn.x && x <= this.clubBtn.x + this.clubBtn.w && y >= this.clubBtn.y && y <= this.clubBtn.y + this.clubBtn.h) {
+      this.shareToGameClub();
       return true;
     }
 
@@ -498,6 +511,41 @@ export default class RankPanel {
     return score.toString();
   }
 
+  shareToGameClub() {
+    const plugin = GameGlobal.miniGameCommon;
+    if (!plugin || !plugin.canIUse('shareImageToGameCenter')) {
+      if (typeof wx !== 'undefined' && wx.showToast) {
+        wx.showToast({ title: '游戏圈不可用', icon: 'none' });
+      }
+      return;
+    }
+    const gameClub = plugin.createGameClub();
+    const canvas = this.ctx.canvas;
+    if (!canvas.toTempFilePath) return;
+    const tabLabel = this.activeTab === 'score' ? '分数榜' : '关卡榜';
+    const myItem = this.findMyItem();
+    const myVal = myItem ? (this.activeTab === 'score' ? myItem.highScore : myItem.level) : 0;
+    const title = `我在俄罗斯方块${tabLabel}排名第${this.findMyRank()}，快来挑战吧！`;
+    const info = wx.getSystemInfoSync();
+    const { pixelRatio, screenWidth, screenHeight } = info;
+    canvas.toTempFilePath({
+      x: 0, y: 0,
+      width: screenWidth * pixelRatio,
+      height: screenHeight * pixelRatio,
+      destWidth: screenWidth,
+      destHeight: screenHeight,
+      success: (res) => {
+        gameClub.shareImageToGameCenter({
+          path: res.tempFilePath,
+          title,
+          content: `分数: ${myVal}`,
+        }).catch(() => {
+          if (wx.showToast) wx.showToast({ title: '分享失败', icon: 'none' });
+        });
+      },
+    });
+  }
+
   drawTabs(ctx, w) {
     const tabsY = TOP_BAR_HEIGHT + HERO_HEIGHT;
     const tabW = w / 2;
@@ -675,30 +723,7 @@ export default class RankPanel {
     ctx.strokeRect(0, 0, pw, BOTTOM_PLAYER_HEIGHT);
     ctx.restore();
 
-    // 分享按钮（头像左侧）
-    const shareSize = 36;
-    const shareX = marginX + 6;
-    const shareY = py + (BOTTOM_PLAYER_HEIGHT - shareSize) / 2;
-    this.shareBtn = { x: shareX, y: shareY, w: shareSize, h: shareSize };
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(shareX + shareSize / 2, shareY + shareSize / 2, shareSize / 2, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.fillStyle = COLORS.primary;
-    ctx.fill();
-    if (this._shareImgLoaded && this._shareImg) {
-      const s = 22;
-      ctx.drawImage(this._shareImg, shareX + (shareSize - s) / 2, shareY + (shareSize - s) / 2, s, s);
-    } else {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '16px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('↗', shareX + shareSize / 2, shareY + shareSize / 2 + 1);
-    }
-    ctx.restore();
-
-    const avatarX = marginX + 50;
+    const avatarX = marginX + 6;
     const avatarSize = 36;
     const avatarR = avatarSize / 2;
     const avatarY = py + (BOTTOM_PLAYER_HEIGHT - avatarSize) / 2;
@@ -724,6 +749,55 @@ export default class RankPanel {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(nick, textX, py + BOTTOM_PLAYER_HEIGHT / 2 - 6);
+
+    // 名字右侧按钮组（分享 + 游戏圈）
+    const nickW = ctx.measureText(nick).width;
+    const btnSize = 28;
+    const btnGap = 6;
+    const btnY = py + (BOTTOM_PLAYER_HEIGHT - btnSize) / 2;
+    const btnStartX = textX + nickW + 8;
+
+    // 分享按钮
+    const shareX = btnStartX;
+    this.shareBtn = { x: shareX, y: btnY, w: btnSize, h: btnSize };
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(shareX + btnSize / 2, btnY + btnSize / 2, btnSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fillStyle = COLORS.primary;
+    ctx.fill();
+    if (this._shareImgLoaded && this._shareImg) {
+      const s = 16;
+      ctx.drawImage(this._shareImg, shareX + (btnSize - s) / 2, btnY + (btnSize - s) / 2, s, s);
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('↗', shareX + btnSize / 2, btnY + btnSize / 2 + 1);
+    }
+    ctx.restore();
+
+    // 游戏圈分享按钮
+    const clubX = shareX + btnSize + btnGap;
+    this.clubBtn = { x: clubX, y: btnY, w: btnSize, h: btnSize };
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(clubX + btnSize / 2, btnY + btnSize / 2, btnSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fillStyle = '#FFB347';
+    ctx.fill();
+    if (this._clubImgLoaded && this._clubImg) {
+      const s = 16;
+      ctx.drawImage(this._clubImg, clubX + (btnSize - s) / 2, btnY + (btnSize - s) / 2, s, s);
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '10px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('圈', clubX + btnSize / 2, btnY + btnSize / 2 + 1);
+    }
+    ctx.restore();
 
     ctx.fillStyle = COLORS.onSurfaceVariant;
     ctx.font = '10px Arial';

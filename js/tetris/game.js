@@ -6,7 +6,7 @@ import AdManager from './ad.js';
 import FailLaughAnimation from './failLaughAnim.js';
 import { saveOnLevelComplete, saveOnGameOver } from './playerData.js';
 import { drawRoundedRect } from './utils.js';
-import { EventScheduler, EVENT_CONFUSION, EVENT_INK, EVENT_BOOM, registerEvent, getEventHandler } from './events.js';
+import { EventScheduler, EVENT_CONFUSION, EVENT_INK, EVENT_BOOM, registerEvent, unregisterEvent, getEventHandler } from './events.js';
 import Effects from './effects.js';
 
 // 设计系统颜色（来自Google Stitch原型）
@@ -223,6 +223,7 @@ export default class TetrisGame {
     // 胜利弹窗状态
     this.showVictoryPopup = false;
     this.victoryMessage = '';
+    this.levelCompleteCount = 0;
     this.victoryButton = {
       x: 0,
       y: 0,
@@ -306,6 +307,7 @@ export default class TetrisGame {
     this.inkHoldMs = 5000;
     this.inkExitMs = 2500;
     this.inkImage = null;
+    this._inkTimeouts = [];
     if (typeof wx !== 'undefined' && wx.createImage) {
       const img = wx.createImage();
       this.inkImage = img;
@@ -314,6 +316,8 @@ export default class TetrisGame {
     }
     registerEvent(EVENT_INK, () => {
       this.playSfx('audio/ink.mp3');
+      this._inkTimeouts.forEach(clearTimeout);
+      this._inkTimeouts = [];
       const startInk = () => {
         if (!this.inkImage || this.inkImage.width <= 1) return;
         if (this.inkPhase !== 'idle') return;
@@ -323,8 +327,8 @@ export default class TetrisGame {
         this.inkAlpha = 1;
       };
       startInk();
-      setTimeout(startInk, 300);
-      setTimeout(startInk, 800);
+      this._inkTimeouts.push(setTimeout(startInk, 300));
+      this._inkTimeouts.push(setTimeout(startInk, 800));
     });
 
     // 炸弹事件
@@ -1569,6 +1573,10 @@ export default class TetrisGame {
             this.playSfx('audio/victor.mp3');
             this.showVictoryPopup = true;
             this.victoryMessage = ['运气好', '酷', '一般般'][Math.floor(Math.random() * 3)];
+            this.levelCompleteCount++;
+            if (this.levelCompleteCount % 2 === 0) {
+              this.adManager.showInterstitialAd();
+            }
             this.victoryEffects.clear();
             const oldGrid = this.gridSizeIndex;
             const oldSpeed = this.speedIndex;
@@ -1672,7 +1680,7 @@ export default class TetrisGame {
     const currentAdHeight = this.adManager.getAdHeight();
 
     // 计算安全边界
-    const topBoundary = currentAdHeight + 10;
+    const topBoundary = currentAdHeight + 30;
     const bottomBoundary = canvas.height - this.bottomHeight - 10;
     const availableSpace = bottomBoundary - topBoundary;
 
@@ -1686,7 +1694,7 @@ export default class TetrisGame {
       // 网格太大，无法完全放入可用空间
       // 使用最小cellSize时仍太大，只能顶部对齐
       offsetY = topBoundary;
-      console.warn(`网格高度(${gridHeight}px)超过可用空间(${availableSpace}px)，使用顶部对齐`);
+      //console.warn(`网格高度(${gridHeight}px)超过可用空间(${availableSpace}px)，使用顶部对齐`);
     }
 
     // 最终安全检查：优先确保网格不会与底部按键区重叠
@@ -2400,7 +2408,7 @@ export default class TetrisGame {
       }
 
       const gameOverBtns = this._adLoading ? [] : [
-        ...(this.reviveUsed ? [] : [{ id: 'shareRevive', text: '复活' }]),
+        ...(this.reviveUsed ? [] : [{ id: 'revive', text: '看广告复活' }]),
         { id: 'restart', text: '重新开始' },
         { id: 'quit', text: '退出' },
       ];
@@ -2419,7 +2427,7 @@ export default class TetrisGame {
         drawRoundedRect(ctx, btnX + 3, btnY + 3, btnW, btnH, btnH / 2);
         ctx.fill();
 
-        const btnBgColor = btn.id === 'shareRevive' ? '#a3e1ca' : btn.id === 'restart' ? '#fdd1b4' : '#ff8c94';
+        const btnBgColor = btn.id === 'revive' ? '#a3e1ca' : btn.id === 'restart' ? '#fdd1b4' : '#ff8c94';
         ctx.fillStyle = btnBgColor;
         ctx.strokeStyle = '#322f22';
         ctx.lineWidth = 3;
@@ -2491,6 +2499,8 @@ export default class TetrisGame {
     this.nextBlockConfused = false;
     this.smokeParticles = [];
     this.inkPhase = 'idle';
+    this._inkTimeouts.forEach(clearTimeout);
+    this._inkTimeouts = [];
     this.bombPhase = 'idle';
     this.bombDebris = [];
     this.gameState = 'playing';
@@ -2507,6 +2517,7 @@ export default class TetrisGame {
     this.keys = {};
 
     this.reviveUsed = false;
+    this.levelCompleteCount = 0;
     this.showVictoryPopup = false;
     this.victoryEffects.clear();
     this.victoryMessage = '';
@@ -2585,6 +2596,26 @@ export default class TetrisGame {
   }
 
   /**
+   * 存储战绩到 KV 缓存（游戏圈自动读取展示）
+   */
+  syncKVData() {
+    if (typeof wx === 'undefined' || !wx.setUserCloudStorage) return;
+    const modeName = this.gameMode === 'infinite' ? '无尽模式' : '关卡模式';
+    const title = this.gameMode === 'infinite'
+      ? `无尽模式 ${this.score}分`
+      : `第${this.level}关 ${this.score}分`;
+    wx.setUserCloudStorage({
+      KVDataList: [
+        { key: 'score', value: String(this.score) },
+        { key: 'level', value: String(this.level) },
+        { key: 'mode', value: this.gameMode },
+        { key: 'desc', value: title },
+        { key: 'modeName', value: modeName },
+      ],
+    });
+  }
+
+  /**
    * 销毁游戏资源
    */
   destroy() {
@@ -2601,6 +2632,15 @@ export default class TetrisGame {
 
     // 取消动画帧
     cancelAnimationFrame(this.aniId);
+
+    // 清除挂起的墨汁 setTimeout
+    this._inkTimeouts.forEach(clearTimeout);
+    this._inkTimeouts = [];
+
+    // 从全局事件注册表移除本实例持有的处理函数
+    unregisterEvent(EVENT_CONFUSION);
+    unregisterEvent(EVENT_INK);
+    unregisterEvent(EVENT_BOOM);
 
     // 释放音效
     if (this._sfxCtx) {

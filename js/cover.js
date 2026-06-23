@@ -23,13 +23,22 @@ export default class Cover {
     // 图片资源
     this.characterImage = null;
     this.logoImage = null;
+    this.recommendIcon = null;
 
     // 加载logo
     if (typeof wx !== 'undefined' && wx.createImage) {
       const img = wx.createImage();
       this.logoImage = img;
-      img.onload = () => {};
+      img.onload = () => { };
       img.src = 'subpackages/images/logoWord.png';
+    }
+
+    // 加载推荐图标
+    if (typeof wx !== 'undefined' && wx.createImage) {
+      const img = wx.createImage();
+      this.recommendIcon = img;
+      img.onload = () => { };
+      img.src = 'subpackages/images/game_comm.png';
     }
 
     // 按钮定义
@@ -48,12 +57,15 @@ export default class Cover {
     ];
 
     // 隐私协议状态
-    this.privacyAgreed = false; // 初始状态为未同意
+    this.privacyAgreed = false;
     this.privacyCheckbox = { id: 'privacyCheckbox', x: 0, y: 0, size: 20 };
     this.privacyLinks = {
       terms: { id: 'termsLink', text: '用户服务协议' },
       privacy: { id: 'privacyLink', text: '隐私保护政策' }
     };
+
+    // 推荐入口（左上角图标按钮）
+    this.recommendBtn = { id: 'recommend', x: 0, y: 0, w: 40, h: 40 };
 
     // 回调函数
     this.getEnergyInfo = getEnergyInfo;
@@ -83,6 +95,30 @@ export default class Cover {
     };
     this._settingsHitAreas = {};
     this.loadSettings();
+
+    // 格子广告（标题右侧，靠近屏幕边缘）
+    this.gridAd = null;
+    this._gridAdCreated = false;
+    if (typeof wx !== 'undefined' && wx.createCustomAd && !this._gridAdCreated) {
+      this._gridAdCreated = true;
+      const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      const sw = windowInfo.windowWidth || 390;
+      const sh = windowInfo.windowHeight || Math.floor((windowInfo.screenHeight || 844) / 3);
+      const adW = 60;
+      const adH = 120;
+      const titleCenterY = Math.floor(sh / 3);
+      this.gridAd = wx.createCustomAd({
+        adUnitId: 'adunit-25a756ef90a916ed',
+        style: {
+          left: sw - adW,
+          top: titleCenterY - Math.floor(adH / 2),
+          width: adW,
+          height: adH,
+        }
+      });
+      this.gridAd.onError(() => { });
+      this.gridAd.show();
+    }
 
     // 初始化背景音乐
     this.initBgm();
@@ -489,6 +525,7 @@ export default class Cover {
     this.effects.renderFireworks(ctx);
     this.drawDecorativeBlocks();
     this.drawEnergyInfo();
+    this.drawRecommendBtn();
     this.drawCharacterSection();
     this.drawGameTitle();
     this.drawActionButtons();
@@ -679,6 +716,40 @@ export default class Cover {
     }
 
     ctx.restore();
+  }
+
+  /**
+   * 绘制推荐按钮（左上角，图标+文字）
+   */
+  drawRecommendBtn() {
+    const { ctx, canvas } = this;
+    const iconSize = 28;
+    const padding = 10;
+    const text = '推荐到游戏圈';
+    ctx.font = 'bold 14px Arial';
+    const textW = ctx.measureText(text).width;
+    const btnH = iconSize + padding * 2;
+    const btnW = iconSize + padding + textW + padding * 2;
+    const margin = 12;
+    const x = margin;
+    const y = margin;
+
+    this.recommendBtn.x = x;
+    this.recommendBtn.y = y;
+    this.recommendBtn.w = btnW;
+    this.recommendBtn.h = btnH;
+
+    this.drawButton(ctx, { x, y, width: btnW, height: btnH, id: 'recommend', text: '' }, 0, '#FFB347', '#322f22');
+
+    if (this.recommendIcon && this.recommendIcon.width > 1) {
+      ctx.drawImage(this.recommendIcon, x + padding, y + padding, iconSize, iconSize);
+    }
+
+    ctx.fillStyle = '#322f22';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + padding + iconSize + padding, y + btnH / 2);
   }
 
   /**
@@ -1015,6 +1086,13 @@ export default class Cover {
 
     console.log('未命中任何按钮，按钮坐标:', JSON.stringify(this.buttons));
 
+    // 检查推荐入口点击
+    const rb = this.recommendBtn;
+    if (rb.w > 0 && x >= rb.x && x <= rb.x + rb.w && y >= rb.y && y <= rb.y + rb.h) {
+      if (this.onPrivacyAction) this.onPrivacyAction('recommend');
+      return null;
+    }
+
     // 检查隐私协议勾选框点击（仅当授权未完成时处理）
     if (!this.authorizationCompleted) {
       const checkbox = this.privacyCheckbox;
@@ -1195,7 +1273,26 @@ export default class Cover {
     if (this.showingSettings) {
       this.hideSettings();
     }
+    if (this.gridAd && this.gridAd.hide) {
+      this.gridAd.hide();
+    }
     console.log('封面隐藏');
+  }
+
+  /**
+   * 销毁封面资源
+   */
+  destroy() {
+    if (this.gridAd) {
+      this.gridAd.destroy();
+      this.gridAd = null;
+    }
+    if (this.bgm) {
+      this.bgm.stop();
+      this.bgm.destroy();
+      this.bgm = null;
+    }
+    this.effects.clear();
   }
 
   /**
@@ -1211,6 +1308,10 @@ export default class Cover {
       } else {
         this.bgmPendingPlay = true;
       }
+    }
+    // 显示封面时显示格子广告
+    if (this.gridAd && this.gridAd.show) {
+      this.gridAd.show();
     }
     console.log('封面显示');
   }
