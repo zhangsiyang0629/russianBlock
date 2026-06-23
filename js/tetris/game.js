@@ -156,7 +156,7 @@ export default class TetrisGame {
     this.adHeight = this.adManager.getAdHeight();
     this.bottomHeight = Math.floor(canvas.height / 5);
     this.availableWidth = canvas.width - 40; // 左右留白
-    this.availableHeight = canvas.height - this.adHeight - this.bottomHeight - 20; // 上下留白
+    this.availableHeight = canvas.height - this.adManager.getBottomAdHeight() - this.bottomHeight - 30;
 
     // 初始化关卡难度配置
     this.gameOver = false;
@@ -714,7 +714,7 @@ export default class TetrisGame {
       const scaledWidth = frameWidth * scale;
       const scaledHeight = frameHeight * scale;
       const x = canvas.width - scaledWidth / 2 - 10;
-      const y = canvas.height - this.bottomHeight - scaledHeight * 3.4 / 10;
+      const y = canvas.height - this.bottomHeight - this.adManager.getBottomAdHeight() - scaledHeight * 3.4 / 10;
       this.failLaughAnim.play(x, y, scale, false);
     }
   }
@@ -725,12 +725,13 @@ export default class TetrisGame {
   renderScoreAndNextBlockUI(offsetX, offsetY, gridWidth, gridHeight) {
     const { ctx } = this;
     const canvas = ctx.canvas;
+    const uiOffsetY = 35;
 
     // 左侧积分卡片（缩小1/3）
     const scoreCardWidth = 67;
     const scoreCardHeight = 47;
     let scoreCardX = offsetX - scoreCardWidth - 15;
-    const scoreCardY = offsetY + 10;
+    const scoreCardY = offsetY + 10 + uiOffsetY;
 
     // 边界检查：确保左侧卡片不会超出屏幕左边缘
     if (scoreCardX < 15) {
@@ -905,16 +906,12 @@ export default class TetrisGame {
     const levelCardWidth = 67;
     const levelCardHeight = 47;
 
-    // 计算位置：网格顶部中间
-    const levelCardX = offsetX + gridWidth / 2 - levelCardWidth / 2;
-    let levelCardY = offsetY - levelCardHeight - 10; // 网格上方10px
+    // 计算位置：分数控件下方（左侧）
+    let levelCardX = offsetX - levelCardWidth - 15;
+    if (levelCardX < 15) levelCardX = 15;
+    let levelCardY = offsetY + 10 + 35 + 47 + 10;
 
-    // 边界检查：确保不会与广告区域严重重叠
-    const minY = this.adManager.getAdHeight() + 5; // 广告下方5px
-    if (levelCardY < minY) {
-      // 如果会与广告区域重叠，调整到广告下方
-      levelCardY = minY;
-    }
+    if (levelCardY < 10) levelCardY = 10;
 
     // 绘制LEVEL卡片（旋转2度，与NEXT卡片对称）
     ctx.save();
@@ -1680,8 +1677,8 @@ export default class TetrisGame {
     const currentAdHeight = this.adManager.getAdHeight();
 
     // 计算安全边界
-    const topBoundary = currentAdHeight + 30;
-    const bottomBoundary = canvas.height - this.bottomHeight - 10;
+    const topBoundary = 30;
+    const bottomBoundary = canvas.height - this.bottomHeight - this.adManager.getBottomAdHeight() - 10;
     const availableSpace = bottomBoundary - topBoundary;
 
     const offsetX = (canvas.width - gridWidth) / 2;
@@ -1966,7 +1963,7 @@ export default class TetrisGame {
     const contentH = titleH + 8 + secH * 2 + secGap + 12 + btnsTotal;
     const dh = padding * 2 + contentH;
     const dx = (w - dw) / 2;
-    const dy = (h - dh) / 2;
+    const dy = (h - dh) / 2 - 60;
     const sectionX = dx + 16;
     const contentW = dw - 32;
 
@@ -2256,7 +2253,7 @@ export default class TetrisGame {
       const btnGap = 12;
       const dh = padding * 2 + titleH + 16 + msgH + 20 + btnH * 3 + btnGap * 2;
       const dx = (w - dw) / 2;
-      const dy = adHeight + (h - adHeight - dh) / 2;
+      const dy = adHeight + (h - adHeight - dh) / 2 - 60;
 
       ctx.save();
       ctx.translate(dx + dw / 2, dy + dh / 2);
@@ -2361,7 +2358,7 @@ export default class TetrisGame {
       const btnsTotal = btnCount * btnH + (btnCount - 1) * btnGap;
       const dh = padding * 2 + titleH + 14 + textBlockH + 10 + btnsTotal;
       const dx = (w - dw) / 2;
-      const dy = adHeight + (h - adHeight - dh) / 2;
+      const dy = adHeight + (h - adHeight - dh) / 2 - 60;
       const btnX = dx + (dw - btnW) / 2;
       const btnStartY = dy + padding + titleH + 14 + textBlockH + 10;
 

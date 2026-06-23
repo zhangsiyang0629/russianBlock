@@ -31,6 +31,7 @@ export default class AdManager {
     }
     this.screenHeight = windowInfo.screenHeight;
     this.screenWidth = windowInfo.windowWidth || 390;
+    this.windowHeight = windowInfo.windowHeight || Math.floor(this.screenHeight / 3);
     this.adHeight = Math.max(110, Math.floor(this.screenWidth / 4));
     this.adVisible = true; // 广告是否可见
     this.adContent = null; // 广告内容
@@ -117,13 +118,13 @@ export default class AdManager {
           }
         } catch (e) {}
       }
-      const adWidth = Math.max(200, menuBtnLeft - 30);
-      const left = 10;
+      const adWidth = Math.max(200, Math.min(320, this.screenWidth - 20));
+      const left = Math.floor((this.screenWidth - adWidth) / 2);
       this.bannerAd = wx.createCustomAd({
         adUnitId: 'adunit-80a697bdd3d4c61b',
         style: {
           left,
-          top: 0,
+          top: this.windowHeight - Math.floor(this.windowHeight / 5) - this.adHeight,
           width: adWidth,
           height: this.adHeight
         }
@@ -246,23 +247,7 @@ export default class AdManager {
    * 处理广告点击
    */
   handleClick(x, y) {
-    if (!this.adVisible || y > this.adHeight) return false;
-    
-    // 模拟广告点击
-    console.log('广告被点击，x:', x, 'y:', y);
-    
-    // 实际微信广告点击处理
-    // if (this.bannerAd) {
-    //   // 微信广告会自动处理点击
-    // }
-    
-    // 这里可以添加跳转逻辑
-    // wx.navigateToMiniProgram({
-    //   appId: 'other-mini-program-appid',
-    //   success: () => console.log('跳转成功')
-    // });
-    
-    return true;
+    return false;
   }
 
   /**
@@ -285,7 +270,14 @@ export default class AdManager {
    * 获取广告区域高度
    */
   getAdHeight() {
-    return this.adVisible ? this.adHeight : 0;
+    return 0;
+  }
+
+  /**
+   * 获取广告区域高度（用于底部边界计算）
+   */
+  getBottomAdHeight() {
+    return this.adHeight;
   }
 
   /**
